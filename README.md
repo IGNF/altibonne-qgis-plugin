@@ -1,4 +1,4 @@
-# VueZ
+# Altibonne
 
 Visualisation d'un profil
 
