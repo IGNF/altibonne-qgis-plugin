@@ -17,7 +17,7 @@ MARGE_DROITE = 10
 # 2 : line edit
 CUSTOM_WIDGETS = ("background-color: #21d847 ;font-weight: bold",
                     "background-color: #a0a0ff ;font-weight: bold",
-                    "font-weight: bold",
+                    "background-color: #ffffff ; font-weight: bold",
                     "background-color: #effff3",
                     "background-color: #d9ffe3"
                   )

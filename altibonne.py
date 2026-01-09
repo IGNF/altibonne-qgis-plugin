@@ -297,7 +297,7 @@ class Altibonne:
                 color = QColor(255, 0, 0)  # rouge
                 width = 3
             else:
-                color = QColor(0, 0, 255)  # bleu
+                color = QColor(0, 0, 0)  # noir
                 width = 1
 
             # dessin du segment
@@ -314,23 +314,24 @@ class Altibonne:
             self.scene.addItem(segment_item)
 
             # affichage pente sur le segment
-            if pente_pc is not None and pente_pc != 0:
-                txt = QGraphicsTextItem(f"{pente_pc:.1f} %")
-                txt.setFont(QFont('Arial', TAILLE_TXT_PENTE))
-                txt.setPos((x1 + x2) / 2, (y1 + y2) / 2 - 10)
+            if self.dlg.checkBox_pente.isChecked():
+                if pente_pc is not None and pente_pc != 0:
+                    txt = QGraphicsTextItem(f"{pente_pc:.1f} %")
+                    txt.setFont(QFont('Arial', TAILLE_TXT_PENTE))
+                    txt.setPos((x1 + x2) / 2, (y1 + y2) / 2 - 10)
 
-                # couleur de fond du texte de pente
-                # position du texte
-                txt_x = (x1 + x2) / 2
-                txt_y = (y1 + y2) / 2 - 10
-                txt.setPos(txt_x, txt_y)
-                rect = txt.boundingRect()
-                fond = QGraphicsRectItem(rect)
-                # fond.setBrush(QColor(255, 255, 100))  # couleur de fond
-                fond.setPen(QColor(0, 0, 0, 0))  # pas de bordure
-                fond.setPos(txt_x, txt_y)
-                self.scene.addItem(fond)
-                self.scene.addItem(txt)
+                    # couleur de fond du texte de pente
+                    # position du texte
+                    txt_x = (x1 + x2) / 2
+                    txt_y = (y1 + y2) / 2 - 10
+                    txt.setPos(txt_x, txt_y)
+                    rect = txt.boundingRect()
+                    fond = QGraphicsRectItem(rect)
+                    # fond.setBrush(QColor(255, 255, 100))  # couleur de fond
+                    fond.setPen(QColor(0, 0, 0, 0))  # pas de bordure
+                    fond.setPos(txt_x, txt_y)
+                    self.scene.addItem(fond)
+                    self.scene.addItem(txt)
 
     def dessine_profil(self, list_coord):
         # self.view.resetTransform()
@@ -405,12 +406,13 @@ class Altibonne:
             cercle.setPos(pos_x, pos_z)
             self.scene.addItem(cercle)
 
-            # # texte altitude
-            # altitude_text = QGraphicsTextItem(str(z_point))
-            # font = QFont('Arial', TAILLE_TXT_ALT, QFont.Bold)
-            # altitude_text.setFont(font)
-            # altitude_text.setPos(pos_x - 15, pos_z)
-            # self.scene.addItem(altitude_text)
+            # texte altitude
+            if self.dlg.checkBox_z.isChecked():
+                altitude_text = QGraphicsTextItem(str(z_point))
+                font = QFont('Arial', TAILLE_TXT_ALT, QFont.Bold)
+                altitude_text.setFont(font)
+                altitude_text.setPos(pos_x - 15, pos_z)
+                self.scene.addItem(altitude_text)
 
         self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
 
@@ -513,6 +515,7 @@ class Altibonne:
         self.view.centerOn(new_center)
         event.accept()
 
+
     def apropos(self):
         dlgAProposDe = QDialog()
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
@@ -574,6 +577,10 @@ class Altibonne:
         self.dlg.pushButtonUpDown.setStyleSheet(CUSTOM_WIDGETS[0])
         self.dlg.pushButtonChangeZpoint.clicked.connect(self.changeZpoint)
         self.dlg.pushButtonChangeZpoint.setStyleSheet(CUSTOM_WIDGETS[0])
+
+        # signal des checkbox
+        self.dlg.checkBox_z.stateChanged.connect(self.actualiserSelection)
+        self.dlg.checkBox_pente.stateChanged.connect(self.actualiserSelection)
 
         # aspect des line edit
         self.dlg.lineEdit_valZ.setStyleSheet(CUSTOM_WIDGETS[2])
