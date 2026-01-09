@@ -21,18 +21,20 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtGui import QPainterPath, QColor, QFont, QVector3D
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QGraphicsPathItem, QGraphicsTextItem, QGraphicsEllipseItem, \
-    QApplication
+import os
 
-from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsLineItem,QGraphicsRectItem
-from qgis._core import QgsPointXY
-from qgis.core import QgsGeometry, QgsWkbTypes, QgsPoint,QgsDistanceArea, QgsProject
-import math
+from PyQt5.QtCore import QLocale, QRegularExpression
+from PyQt5.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
+from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog
+from PyQt5.uic import loadUi
+
+from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
+from qgis.core import QgsGeometry, QgsWkbTypes, QgsPoint
 
 # Import the code for the dialog
 from .altibonne_dialog import AltibonneDialog
 from .fonction import *
+from .constante import *
 from .clic_cercle import *
 
 def fusion_points(l1, l2):
@@ -42,18 +44,18 @@ def orienter_lignes(sommets_l1, sommets_l2, tol=1e-3):
     p1_start, p1_end = sommets_l1[0], sommets_l1[-1]
     p2_start, p2_end = sommets_l2[0], sommets_l2[-1]
 
-    # Comparer seulement x et y
+    # Comparer seulement les x et les y
     if points_egau_xy(p1_end, p2_start, tol):
-        # L1 -> L2 sans inversion
+        # L1 → L2 sans inversion
         return sommets_l1, sommets_l2
     elif points_egau_xy(p1_end, p2_end, tol):
-        # L1 -> L2 inversée
+        # L1 → L2 inversée
         return sommets_l1, list(reversed(sommets_l2))
     elif points_egau_xy(p1_start, p2_end, tol):
-        # L1 inversée -> L2 inversés
+        # L1 inversée → L2 inversés
         return list(reversed(sommets_l1)), list(reversed(sommets_l2))
     elif points_egau_xy(p1_start, p2_start, tol):
-        # L1 inversée -> L2 inversée
+        # L1 inversée → L2 inversée
         # return list(reversed(sommets_l1)), list(reversed(sommets_l2))
         return list(reversed(sommets_l1)), sommets_l2
 
@@ -73,11 +75,10 @@ class Altibonne:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
-
-        # Save reference to the QGIS interface
-
+        self.list_x = None
+        self.list_y = None
+        self.list_z = None
         self.last_mouse_pos = None
-        # self.list_z = []
         self.dico_coord = {"x":[],"y":[],"z":[]}
         self.list_coord = []
         self.view = None
@@ -85,9 +86,14 @@ class Altibonne:
         self.scene = None
         self.layer = None
         self.dlg = None
+        self.seuil_pente = 0
         self.iface = iface
-
+        self.point_clique = None
+        # liste des marqueurs pour "pointer" un point cliqué dans qgis
+        self.liste_markers = []
         self.first_start = True
+
+        
 
     def get_coord_selection(self):
         self.dico_coord = {"x": [], "y": [], "z": []}
@@ -121,6 +127,7 @@ class Altibonne:
                 self.dico_coord["z"].append(p.z())
 
             return self.dico_coord
+        return None
 
     def getZminmax_allselection(self):
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
@@ -132,87 +139,233 @@ class Altibonne:
         self.dico_coord = {"x": [], "y": [], "z": []}
         self.list_coord = self.get_coord_selection()
 
-        # self.layer = self.iface.activeLayer()
-        self.dlg.label_nb_points.setText(f"Nombre de points = {0}")
+        self.dlg.label_nb_points.setText(f"Nb de points = {0}")
         self.dlg.label_warning.setText("")
-        # self.dlg.pushButtonUpDown.setEnabled(False)
+
+        # suppression de tous les marqueurs (pointer le point cliqué) lorsque la selection change
+        for m in self.liste_markers:
+            self.iface.mapCanvas().scene().removeItem(m)
+        self.liste_markers.clear()
+
+        self.dlg.pushButtonUpDown.setEnabled(False)
+        self.dlg.pushButtonChangeZpoint.setEnabled(False)
 
         if self.layer.selectedFeatureCount() == 0:
             return
-        if self.layer.selectedFeatureCount() > 2:
-            self.dlg.label_warning.setText(
-                f"<span style = 'color:red'><b>veuillez sélectionner 2 tronçons maximum</b></span>")
-            return
+
+        if self.layer.selectedFeatureCount() == 1:
+            self.dlg.pushButtonUpDown.setEnabled(True)
+
         if self.layer.selectedFeatureCount() == 2:
+            self.dlg.pushButtonUpDown.setEnabled(True)
             selection = self.layer.selectedFeatures()
             sel1 = selection[0]
             sel2 = selection[1]
             if not sel1.geometry().touches(sel2.geometry()):
                 self.dlg.label_warning.setText(f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
                 return
-        if self.layer.selectedFeatureCount() == 1:
-            self.dlg.pushButtonUpDown.setEnabled(True)
 
-        self.dessine_ligne(self.list_coord)
+        if self.layer.selectedFeatureCount() > 2:
+            self.dlg.label_warning.setText(
+                f"<span style = 'color:red'><b>Sélection : 2 tronçons maximum</b></span>")
+            return
 
-    def changeZ(self):
+
+        self.dessine_profil(self.list_coord)
+
+    def actualiser_seuil(self):
+        self.seuil_pente = float(self.dlg.lineEdit_seuil_pente.text())
+        self.actualiserSelection()
+
+    def changeZpoint(self):
+        if self.point_clique is None:
+            return
+
+        self.layer.startEditing()
+        # Parcourir les features sélectionnées
+        for feat in self.layer.selectedFeatures():
+            geom = feat.geometry()
+            points = [QgsPoint(pt.x(), pt.y(), pt.z() if hasattr(pt, 'z') else 0)
+                      for pt in geom.vertices()]
+
+            # Chercher le point correspondant à point_xy
+            for i, pt in enumerate(points):
+                if abs(pt.x() - self.point_clique.x()) < 1e-6 and abs(pt.y() - self.point_clique.y()) < 1e-6:
+                    points[i] = QgsPoint(pt.x(), pt.y(), float(self.dlg.lineEditZInterpole.text()))  # Modifier seulement le Z
+                    break
+
+            # Recréer la géométrie et appliquer
+            nouvelle_geom = QgsGeometry.fromPolyline(points)
+            self.layer.changeGeometry(feat.id(), nouvelle_geom)
+
+        # Rafraîchir la vue
+        self.actualiserSelection()
+        self.layer.triggerRepaint()
+
+    def changeZentite(self):
         if self.dlg.lineEdit_valZ.text() == "0":
             return
         geom_type = self.layer.wkbType()
         geom_type_str = QgsWkbTypes.displayString(geom_type)
         if geom_type_str == "LineStringZ" or geom_type_str == "MultiLineString":
-            self.getgeometrie()
+            # self.getgeometrie()
+            self.layer.startEditing()
+            for sel in self.layer.selectedFeatures():
+                geometry = sel.geometry()
+                new_points = []
+                for point in geometry.vertices():
+                    new_point = QgsPoint(point.x(), point.y(), point.z() + int(self.dlg.lineEdit_valZ.text()))
+                    new_points.append(new_point)
 
-    def getgeometrie(self):
-        self.layer.startEditing()
-        for sel in self.layer.selectedFeatures():
-            geometry = sel.geometry()
-            new_points = []
-            for point in geometry.vertices():
-                new_point = QgsPoint(point.x(),point.y(),point.z()+int(self.dlg.lineEdit_valZ.text()))
-                new_points.append(new_point)
+                new_geometry = QgsGeometry.fromPolyline(new_points)
+                self.layer.changeGeometry(sel.id(), new_geometry)
+            self.actualiserSelection()
+        else:
+            QMessageBox.warning(None,"Avertissement","la sélection doit être un linéaire !")
 
-            new_geometry = QgsGeometry.fromPolyline(new_points)
-            self.layer.changeGeometry(sel.id(), new_geometry)
-        self.actualiserSelection()
-
-    def dessine_ligne(self,list_coord):
-        # self.view.resetTransform()
-        self.view.resetTransform()
-        self.scene.clear()
-        path = QPainterPath()
-
-        marge_haut = 10
-        marge_bas = 30
-        marge_gauche = 10
-        marge_droite = 10
-        plage_disponible = self.scene.height() - marge_bas - marge_haut
-        largeur_disponible = self.scene.width() - marge_gauche - marge_droite
-
-        # récupération des coordonnées des tronçons sélectionnés
-        # self.list_coord = self.get_coord_selection()
-        list_x = list_coord["x"]
-        list_y = list_coord["y"]
-        list_z = list_coord["z"]
-
-        # préparer la mesure de distance adaptée au CRS
-        from qgis.core import QgsDistanceArea, QgsPointXY, QgsProject
-        d = QgsDistanceArea()
-        d.setSourceCrs(self.layer.crs(), QgsProject.instance().transformContext())
-        if self.layer.crs().isGeographic():
-            d.setEllipsoid(self.layer.crs().ellipsoidAcronym())
-
-        # distances cumulées entre points
+    def distance_cumulee(self,d,list_x,list_y):
         distances_cumulees = [0]
         for i in range(1, len(list_x)):
             p1 = QgsPointXY(list_x[i - 1], list_y[i - 1])
             p2 = QgsPointXY(list_x[i], list_y[i])
             distance = d.measureLine(p1, p2)
             distances_cumulees.append(distances_cumulees[-1] + distance)
+        return distances_cumulees
+
+    def calcul_pente(self,d,pt1, pt2):
+        # d = QgsDistanceArea()
+        # d.setSourceCrs(self.layer.crs(), QgsProject.instance().transformContext())
+        # if self.layer.crs().isGeographic():
+        #     d.setEllipsoid(self.layer.crs().ellipsoidAcronym())
+        distance = d.measureLine(QgsPointXY(pt1.x(), pt1.y()),QgsPointXY(pt2.x(), pt2.y()))
+        if distance == 0:
+            return None
+        pente = (pt2.z() - pt1.z()) / distance
+        pente_pourcent = pente * 100
+        return pente_pourcent
+
+    def dessine_gradations_z(self, zmin, zmax):
+        """
+        Dessine les graduations d'altitude sur la bordure gauche de la scène,
+        par pas de 10 unités.
+        """
+        plage_disponible = self.scene.height() - MARGE_BAS - MARGE_HAUT
+
+        # Arrondir zmin et zmax aux multiples de 10
+        z_min_arrondi = int(zmin)
+        z_max_arrondi = int(zmax)+1
+
+        # Boucle sur les multiples de 10
+        for z in range(int(z_min_arrondi), int(z_max_arrondi)):
+            # Calcul de la position verticale dans la scène
+            if zmax != zmin:
+                y = MARGE_HAUT + plage_disponible * (1 - (z - zmin) / (zmax - zmin))
+            else:
+                y = self.scene.height() / 2
+
+            # Texte de l'altitude
+            txt = QGraphicsTextItem(f"{z}")
+            txt.setFont(QFont('Arial', 7))
+            txt.setPos(-3, y-7)  # à gauche de la scène
+            self.scene.addItem(txt)
+
+            # Optionnel : petit trait horizontal
+            self.scene.addLine(MARGE_GAUCHE, y, self.scene.width(), y, QColor(235, 235, 235))
+
+    def dessine_segment(self,d,list_z,list_x,list_y,distances_cumulees,distance_totale):
+        plage_disponible = self.scene.height() - MARGE_BAS - MARGE_HAUT
+        largeur_disponible = self.scene.width() - MARGE_GAUCHE - MARGE_DROITE
+        zmin, zmax = self.getZminmax_allselection()
+        for i in range(1, len(list_z)):
+            # points SIG
+            pt1 = QgsPoint(list_x[i - 1], list_y[i - 1], list_z[i - 1])
+            pt2 = QgsPoint(list_x[i], list_y[i], list_z[i])
+
+            pente_pc = self.calcul_pente(d,pt1, pt2)
+
+            # positions graphiques
+            x1 = MARGE_GAUCHE + (distances_cumulees[i - 1] / distance_totale) * largeur_disponible
+            x2 = MARGE_GAUCHE + (distances_cumulees[i] / distance_totale) * largeur_disponible
+            if zmax != zmin:
+                y1 = MARGE_HAUT + plage_disponible * (1 - (list_z[i - 1] - zmin) / (zmax - zmin))
+                y2 = MARGE_HAUT + plage_disponible * (1 - (list_z[i] - zmin) / (zmax - zmin))
+            else:
+                y1 = y2 = self.scene.height() / 2
+
+            # couleur selon pente
+            if pente_pc is not None and abs(pente_pc) > self.seuil_pente:
+                color = QColor(255, 0, 0)  # rouge
+                width = 3
+            else:
+                color = QColor(0, 0, 255)  # bleu
+                width = 1
+
+            # dessin du segment
+            seg_path = QPainterPath()
+            seg_path.moveTo(x1, y1)
+            seg_path.lineTo(x2, y2)
+
+            segment_item = QGraphicsPathItem(seg_path)
+            pen = segment_item.pen()
+            pen.setColor(color)
+            pen.setWidth(width)
+            segment_item.setPen(pen)
+
+            self.scene.addItem(segment_item)
+
+            # affichage pente sur le segment
+            if pente_pc is not None and pente_pc != 0:
+                txt = QGraphicsTextItem(f"{pente_pc:.1f} %")
+                txt.setFont(QFont('Arial', TAILLE_TXT_PENTE))
+                txt.setPos((x1 + x2) / 2, (y1 + y2) / 2 - 10)
+
+                # couleur de fond du texte de pente
+                # position du texte
+                txt_x = (x1 + x2) / 2
+                txt_y = (y1 + y2) / 2 - 10
+                txt.setPos(txt_x, txt_y)
+                rect = txt.boundingRect()
+                fond = QGraphicsRectItem(rect)
+                # fond.setBrush(QColor(255, 255, 100))  # couleur de fond
+                fond.setPen(QColor(0, 0, 0, 0))  # pas de bordure
+                fond.setPos(txt_x, txt_y)
+                self.scene.addItem(fond)
+                self.scene.addItem(txt)
+
+    def dessine_profil(self, list_coord):
+        # self.view.resetTransform()
+        self.view.resetTransform()
+        self.scene.clear()
+
+        plage_disponible = self.scene.height() - MARGE_BAS - MARGE_HAUT
+        largeur_disponible = self.scene.width() - MARGE_GAUCHE - MARGE_DROITE
+
+        # récupération des coordonnées des tronçons sélectionnés
+        # self.list_coord = self.get_coord_selection()
+        self.list_x = list_coord["x"]
+        self.list_y = list_coord["y"]
+        self.list_z = list_coord["z"]
+
+        # préparer la mesure de distance adaptée au CRS
+        d = QgsDistanceArea()
+        d.setSourceCrs(self.layer.crs(), QgsProject.instance().transformContext())
+        if self.layer.crs().isGeographic():
+            d.setEllipsoid(self.layer.crs().ellipsoidAcronym())
+
+        # calcul de la distances cumulées entre points
+        distances_cumulees = self.distance_cumulee(d,self.list_x, self.list_y)
         distance_totale = distances_cumulees[-1] or 1  # éviter division par zéro
 
         # min/max Z
         zmin, zmax = self.getZminmax_allselection()
+
+        # DESSIN des graduations
+        self.dessine_gradations_z(zmin, zmax)
+
+        # ====================
+        # DESSIN des segments et affiche pente sur segments
+        # la couleur est en fonction de la pente
+        self.dessine_segment(d,self.list_z, self.list_x, self.list_y,distances_cumulees,distance_totale)
 
         # indices de fin de ligne pour cercles rouges
         indice_fin_ligne = []
@@ -222,47 +375,44 @@ class Altibonne:
             count += nb_points
             indice_fin_ligne.append(count)
 
-        # DESSIN
-        for i, z_point in enumerate(list_z):
-            pos_x = marge_gauche + (distances_cumulees[i] / distance_totale) * largeur_disponible
+        # ==============
+        # DESSIN des cercles et altitudes sur les sommets
+        for i, z_point in enumerate(self.list_z):
+            pos_x = MARGE_GAUCHE + (distances_cumulees[i] / distance_totale) * largeur_disponible
             if zmax != zmin:
-                pos_z = marge_haut + plage_disponible * (1 - (z_point - zmin) / (zmax - zmin))
+                pos_z = MARGE_HAUT + plage_disponible * (1 - (z_point - zmin) / (zmax - zmin))
             else:
                 pos_z = self.scene.height() / 2
-            # LIGNE
-            if i == 0:
-                path.moveTo(pos_x, pos_z)
-            else:
-                path.lineTo(pos_x, pos_z)
 
-            # CERCLES ROUGE
-            if i in [0, indice_fin_ligne[0] - 1]:  # début et fin du premier tronçon
-                # cercle = QGraphicsEllipseItem(-5, -5, 10, 10)
-                cercle = CercleClickable(-5, -5, 10, 10)
-                cercle.setBrush(QColor(255, 0, 0))
+            # définir le point cliqué pour ensuite le visualiser dans qgis
+            qgs_point = QgsPointXY(self.list_x[i], self.list_y[i])
             # CERCLES VERT
-            else:
-                # cercle = QGraphicsEllipseItem(-2.5, -2.5, 5, 5)
-                cercle = CercleClickable(-2.5, -2.5, 5, 5)
+            if i not in [0, indice_fin_ligne[0] - 1]:
+                cercle = CercleClickable(-TAILLE_CERCLE_INTER/2, -TAILLE_CERCLE_INTER/2,
+                                         TAILLE_CERCLE_INTER, TAILLE_CERCLE_INTER,i,
+                                         qgs_point,self)
                 cercle.setBrush(QColor(0, 255, 0))
+                cercle.setZValue(0)
+            # CERCLES ROUGE
+            else:  # début et fin du premier tronçon
+                cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE/2, -TAILLE_CERCLE_EXTREMITE/2,
+                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,
+                                         qgs_point,self)
+                cercle.setBrush(QColor(255, 0, 0))
+                # force le cercle rouge à passer au-dessus des cercles verts
+                cercle.setZValue(1)
+
             cercle.setPos(pos_x, pos_z)
             self.scene.addItem(cercle)
 
-            # texte altitude
-            altitude_text = QGraphicsTextItem(str(z_point))
-            font = QFont('Arial', 8, QFont.Bold)
-            altitude_text.setFont(font)
-            altitude_text.setPos(pos_x - 15, pos_z)
-            self.scene.addItem(altitude_text)
+            # # texte altitude
+            # altitude_text = QGraphicsTextItem(str(z_point))
+            # font = QFont('Arial', TAILLE_TXT_ALT, QFont.Bold)
+            # altitude_text.setFont(font)
+            # altitude_text.setPos(pos_x - 15, pos_z)
+            # self.scene.addItem(altitude_text)
 
-        # ajouter polyline
-        polyline_item = QGraphicsPathItem(path)
-        polyline_item.setPen(QColor(255, 0, 0))
-        self.scene.addItem(polyline_item)
-
-        self.dlg.label_nb_points.setText(f"Nombre de points = {len(list_z)}")
-
-
+        self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
 
     def initGui(self):
         pass
@@ -270,12 +420,9 @@ class Altibonne:
     def unload(self):
         pass
 
-
     def creerscene(self):
         self.scene = QGraphicsScene(self.dlg)
-        self.layoutscene = QVBoxLayout()
-        # self.scene.setSceneRect(0, 0, 200, 200)  # Définir la taille de la scène
-        # self.add_scene_border()
+        # self.layoutscene = QVBoxLayout()
 
         # Créer une vue pour afficher la scène
         self.view = QGraphicsView(self.scene,self.dlg)
@@ -284,54 +431,31 @@ class Altibonne:
         self.view.setStyleSheet("QGraphicsView { border: 3px solid black; }")
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.dlg.setContentsMargins(0, 40, 10, 0)
+        # self.dlg.setContentsMargins(0, 50, 0, 0)
+        self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
-        # self.dlg.verticalLayout_vue.addWidget(self.view)
-        self.layoutscene.addWidget(self.view)
+        # Ajouter sur la dernière ligne
+        last_row = self.dlg.gridLayout.rowCount()
+        self.dlg.gridLayout.addWidget(self.view, last_row, 0, 1, self.dlg.gridLayout.columnCount())
 
+        # self.dlg.gridLayout.addWidget(self.view)
+        self.dlg.gridLayout.addWidget(self.view, 2, 0, 1, self.dlg.gridLayout.columnCount())
 
+        # self.dlg.widgetScene.setLayout(self.dlg.verticalLayout)
+        # self.layoutscene.addWidget(self.view)
         # Définir le layout principal de dlg
-        # self.dlg.setLayout(self.dlg.verticalLayout_vue)
-        self.dlg.setLayout(self.layoutscene)
+        # self.dlg.setLayout(self.layoutscene)
 
-
-
-
-    def add_scene_border(self):
-        # Créer un rectangle qui servira de contour autour de la scène
-        scene_rect = self.scene.sceneRect()
-        border_item = QGraphicsRectItem(scene_rect)
-
-        # # Appliquer un style au contour (bordure)
-        border_item.setPen(Qt.black)  # Bordure noire
-        border_item.setBrush(Qt.transparent)  # Fond transparent
-        self.scene.addItem(border_item)
-
-    # def creerline(self):
-    #     self.line = QGraphicsLineItem()
-    #     # self.line.setLine(20, 20, 50, 90)
-    #     self.scene.addItem(self.line)
-
-    def update_line_position(self):
-
-        # Adapter la ligne à la taille de la fenêtre
-        # Par exemple, la ligne pourrait s'étirer en fonction de la taille de la scène
-        # scene_rect = self.scene.sceneRect()
-        # print("taille scene = ",scene_rect.height())
-        # print("pos scene = ",self.scene.sceneRect())
-        self.scene.setSceneRect(0, 0, self.view.width(), self.view.height())  # Définir la taille de la scène
-
-        # Appliquer un style au contour (bordure)
-        # scene_rect = self.scene.sceneRect()
-        # border_item = QGraphicsRectItem(scene_rect)
-        # border_item.setPen(Qt.black)  # Bordure noire
-        # border_item.setBrush(Qt.transparent)  # Fond transparent
-        # self.scene.addItem(border_item)
-
-        # self.line.setLine(0, 0, self.view.width(), self.view.height())
-
-
+    # def add_scene_border(self):
+    #     # Créer un rectangle qui servira de contour autour de la scène
+    #     scene_rect = self.scene.sceneRect()
+    #     border_item = QGraphicsRectItem(scene_rect)
+    #
+    #     # # Appliquer un style au contour (bordure)
+    #     border_item.setPen(Qt.black)  # Bordure noire
+    #     border_item.setBrush(Qt.transparent)  # Fond transparent
+    #     self.scene.addItem(border_item)
 
     def on_resize(self, event):
         self.layer = self.iface.activeLayer()
@@ -344,7 +468,7 @@ class Altibonne:
         if not self.list_coord:  # None ou dictionnaire vide
             event.accept()
             return
-        self.dessine_ligne(self.list_coord)
+        self.dessine_profil(self.list_coord)
         event.accept()
 
     # def mousepressevent(self,event):
@@ -360,7 +484,7 @@ class Altibonne:
             self.last_mouse_pos = event.pos()  # Mettre à jour la position de la souris
 
             # Déplacer la scène (ou vue) en fonction du mouvement de la souris
-            self.view.translate(delta.x(), delta.y())  # Déplacer la scène sur l'axe X et Y
+            self.view.translate(delta.x(), delta.y())
             event.accept()
 
     def mousereleaseevent(self,event):
@@ -389,6 +513,13 @@ class Altibonne:
         self.view.centerOn(new_center)
         event.accept()
 
+    def apropos(self):
+        dlgAProposDe = QDialog()
+        loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
+        dlgAProposDe.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint)
+        dlgAProposDe.setWindowTitle(f"{TITRE} {VERSION}")
+        dlgAProposDe.exec_()
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -397,6 +528,7 @@ class Altibonne:
         # if self.first_start == True:
         #     self.first_start = False
         self.dlg = AltibonneDialog()
+        self.dlg.setWindowTitle(f"{TITRE} {VERSION}")
 
         self.layer = self.iface.activeLayer()
 
@@ -405,15 +537,54 @@ class Altibonne:
         while QApplication.overrideCursor() is not None:
             QApplication.restoreOverrideCursor()
 
-        self.dlg.label_nb_points.setText(f"Nombre de points = {0}")
-        self.dlg.lineEdit_valZ.setText("0")
+        self.dlg.label_nb_points.setText(f"Nb de points = {0}")
         self.dlg.label_warning.setText("")
 
         self.iface.mapCanvas().selectionChanged.connect(self.actualiserSelection)
         self.creerscene()
 
+        # delta z
+        # nombre compris entre 0 et 100 avec 1 décimale
+        regex = QRegularExpression(r"^(?:100(?:\.0)?|(?:\d{1,2})(?:\.\d)?)$")
+        validator = QRegularExpressionValidator(regex, self.dlg)
+        self.dlg.lineEdit_valZ.setValidator(validator)
+        self.dlg.lineEdit_valZ.setText("0")
 
-        self.dlg.pushButtonUpDown.clicked.connect(self.changeZ)
+        # z interpolé
+        # nombre compris entre 0 et 4000 avec 1 décimale
+        regex = QRegularExpression(r"^(?:0(?:\.\d)?|[1-9]\d{0,2}(?:\.\d)?|[1-3]\d{3}(?:\.\d)?|4000(?:\.0)?)$")
+        validator = QRegularExpressionValidator(regex, self.dlg)
+        self.dlg.lineEditZInterpole.setValidator(validator)
+
+        # pente
+        # nombre compris entre 1 et 90 avec 1 décimale
+        regex = QRegularExpression(r"^(?:[1-9](?:\.\d)?|[1-8]\d(?:\.\d)?|90(?:\.0)?)$")
+        validator = QRegularExpressionValidator(regex, self.dlg)
+        self.dlg.lineEdit_seuil_pente.setValidator(validator)
+        self.dlg.lineEdit_seuil_pente.setText("2")
+        self.seuil_pente = int(self.dlg.lineEdit_seuil_pente.text())
+
+        # a propos...
+        self.dlg.pushButtonApropos.clicked.connect(self.apropos)
+
+        # evenement bouton
+        self.dlg.pushButton_actualiser.clicked.connect(self.actualiser_seuil)
+        self.dlg.pushButton_actualiser.setStyleSheet(CUSTOM_WIDGETS[1])
+        self.dlg.pushButtonUpDown.clicked.connect(self.changeZentite)
+        self.dlg.pushButtonUpDown.setStyleSheet(CUSTOM_WIDGETS[0])
+        self.dlg.pushButtonChangeZpoint.clicked.connect(self.changeZpoint)
+        self.dlg.pushButtonChangeZpoint.setStyleSheet(CUSTOM_WIDGETS[0])
+
+        # aspect des line edit
+        self.dlg.lineEdit_valZ.setStyleSheet(CUSTOM_WIDGETS[2])
+        self.dlg.lineEditZpoint.setStyleSheet(CUSTOM_WIDGETS[2])
+        self.dlg.lineEditZInterpole.setStyleSheet(CUSTOM_WIDGETS[2])
+        self.dlg.lineEdit_seuil_pente.setStyleSheet(CUSTOM_WIDGETS[2])
+
+        # aspect dialog et view
+        self.dlg.setStyleSheet(CUSTOM_WIDGETS[3])
+        self.view.setStyleSheet(CUSTOM_WIDGETS[4])
+
 
         self.dlg.resizeEvent = self.on_resize
         # self.dlg.mousePressEvent = self.mousepressevent
@@ -427,9 +598,10 @@ class Altibonne:
         self.dlg.show()
         self.actualiserSelection()
         # Run the dialog event loop
-        # result = self.dlg.exec_()
-        # # See if OK was pressed
-        # if result:
-        #     # Do something useful here - delete the line containing pass and
-        #     # substitute with your code.
-        #     pass
+        result = self.dlg.exec_()
+        if result == QDialog.Rejected:
+            # suppression de tous les marqueurs (pointer le point cliqué) lorsque on quitte
+            for m in self.liste_markers:
+                self.iface.mapCanvas().scene().removeItem(m)
+            self.liste_markers.clear()
+
