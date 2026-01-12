@@ -183,6 +183,8 @@ class Altibonne:
         if self.list_coord is None:
             return
         self.dessine_profil(self.list_coord)
+        # -> forcer le redimensionnement pour mettre a jour la scene 
+        self.dlg.resize(self.dlg.width() + 1, self.dlg.height() + 1)
 
 
     def actualiser_seuil(self):
@@ -622,6 +624,7 @@ class Altibonne:
         self.dlg.show()
 
         self.actualiserSelection()
+
 
         # Run the dialog event loop
         result = self.dlg.exec_()
