@@ -23,9 +23,9 @@
 """
 import os
 
-from PyQt5.QtCore import QLocale, QRegularExpression
+from PyQt5.QtCore import QLocale, QRegularExpression, QTimer
 from PyQt5.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
-from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog
+from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog, QGraphicsItem
 from PyQt5.uic import loadUi
 
 from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
@@ -40,34 +40,36 @@ from .clic_cercle import *
 def fusion_points(l1, l2):
     return l1 + l2
 
-def orienter_lignes(sommets_l1, sommets_l2, tol=1e-3):
+def orienter_lignes(layer,sommets_l1, sommets_l2):
     p1_start, p1_end = sommets_l1[0], sommets_l1[-1]
     p2_start, p2_end = sommets_l2[0], sommets_l2[-1]
 
     # Comparer seulement les x et les y
-    if points_egau_xy(p1_end, p2_start, tol):
-        # L1 → L2 sans inversion
+    if points_egau_xy(layer,p1_end, p2_start, TOLERANCE_PT_CONFONDU):
+        # L1 , L2 sans inversion
         return sommets_l1, sommets_l2
-    elif points_egau_xy(p1_end, p2_end, tol):
-        # L1 → L2 inversée
+    elif points_egau_xy(layer,p1_end, p2_end, TOLERANCE_PT_CONFONDU):
+        # L1 , L2 inversée
         return sommets_l1, list(reversed(sommets_l2))
-    elif points_egau_xy(p1_start, p2_end, tol):
-        # L1 inversée → L2 inversés
+    elif points_egau_xy(layer,p1_start, p2_end, TOLERANCE_PT_CONFONDU):
+        # L1 inversée , L2 inversés
         return list(reversed(sommets_l1)), list(reversed(sommets_l2))
-    elif points_egau_xy(p1_start, p2_start, tol):
-        # L1 inversée → L2 inversée
-        # return list(reversed(sommets_l1)), list(reversed(sommets_l2))
+    elif points_egau_xy(layer,p1_start, p2_start, TOLERANCE_PT_CONFONDU):
+        # L1 inversée
         return list(reversed(sommets_l1)), sommets_l2
 
-    # Pas de point commun sur une extrémité
+    # Pas de point commun sur les extrémités
     return None, None
 
 # le z peut être different pour que 2 troncons soient contigües
-def points_egau_xy(p1, p2, tol=1e-3):
-    return (
-            abs(p1.x() - p2.x()) < tol and
-            abs(p1.y() - p2.y()) < tol
-    )
+def points_egau_xy(layer,p1, p2, tol_metre):
+    """Compare deux points en coordonnées réelles avec tolérance en mètres"""
+    d = QgsDistanceArea()
+    d.setSourceCrs(layer.crs(), QgsProject.instance().transformContext())
+    if layer.crs().isGeographic():
+        d.setEllipsoid(layer.crs().ellipsoidAcronym())
+    distance = d.measureLine(QgsPointXY(p1.x(), p1.y()), QgsPointXY(p2.x(), p2.y()))
+    return distance <= tol_metre
 
 
 # ============================================
@@ -93,11 +95,13 @@ class Altibonne:
         self.liste_markers = []
         self.first_start = True
 
-        
 
     def get_coord_selection(self):
         self.dico_coord = {"x": [], "y": [], "z": []}
         features = self.layer.selectedFeatures()
+
+        if len(features) == 0:
+            return None
 
         if len(features) == 1:
             geom = features[0].geometry()
@@ -111,7 +115,7 @@ class Altibonne:
             sommets_l1 = list(features[0].geometry().vertices())
             sommets_l2 = list(features[1].geometry().vertices())
 
-            l1, l2 = orienter_lignes(sommets_l1, sommets_l2)
+            l1, l2 = orienter_lignes(self.layer,sommets_l1, sommets_l2)
             if l1 is None or l2 is None:
                 self.dlg.label_warning.setText(
                     f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
@@ -130,14 +134,14 @@ class Altibonne:
         return None
 
     def getZminmax_allselection(self):
+        if self.dico_coord ["z"] == "":
+            return None
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self):
         if not self.dlg.isVisible():
             return
         self.scene.clear()
-        self.dico_coord = {"x": [], "y": [], "z": []}
-        self.list_coord = self.get_coord_selection()
 
         self.dlg.label_nb_points.setText(f"Nb de points = {0}")
         self.dlg.label_warning.setText("")
@@ -150,13 +154,18 @@ class Altibonne:
         self.dlg.pushButtonUpDown.setEnabled(False)
         self.dlg.pushButtonChangeZpoint.setEnabled(False)
 
+        self.layer = self.iface.activeLayer()
         if self.layer.selectedFeatureCount() == 0:
+            self.dlg.lineEdit_valZ.setText("0")
+            self.dlg.lineEditZpoint.setText("0")
+            self.dlg.lineEditZInterpole.setText("0")
+            self.dlg.label_warning.setText("")
             return
 
-        if self.layer.selectedFeatureCount() == 1:
+        elif self.layer.selectedFeatureCount() == 1:
             self.dlg.pushButtonUpDown.setEnabled(True)
 
-        if self.layer.selectedFeatureCount() == 2:
+        elif self.layer.selectedFeatureCount() == 2:
             self.dlg.pushButtonUpDown.setEnabled(True)
             selection = self.layer.selectedFeatures()
             sel1 = selection[0]
@@ -165,13 +174,16 @@ class Altibonne:
                 self.dlg.label_warning.setText(f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
                 return
 
-        if self.layer.selectedFeatureCount() > 2:
+        elif self.layer.selectedFeatureCount() > 2:
             self.dlg.label_warning.setText(
                 f"<span style = 'color:red'><b>Sélection : 2 tronçons maximum</b></span>")
             return
 
-
+        self.list_coord = self.get_coord_selection()
+        if self.list_coord is None:
+            return
         self.dessine_profil(self.list_coord)
+
 
     def actualiser_seuil(self):
         self.seuil_pente = float(self.dlg.lineEdit_seuil_pente.text())
@@ -180,6 +192,13 @@ class Altibonne:
     def changeZpoint(self):
         if self.point_clique is None:
             return
+
+        # Reprojeter point cliqué dans CRS de la couche
+        # car il est defini dans la class "CercleClickable" avec la projection du canvas !
+        crs_canvas = self.iface.mapCanvas().mapSettings().destinationCrs()
+        crs_layer = self.layer.crs()
+        transform = QgsCoordinateTransform(crs_canvas, crs_layer, QgsProject.instance())
+        pt_clique_layer = transform.transform(self.point_clique)
 
         self.layer.startEditing()
         # Parcourir les features sélectionnées
@@ -190,7 +209,7 @@ class Altibonne:
 
             # Chercher le point correspondant à point_xy
             for i, pt in enumerate(points):
-                if abs(pt.x() - self.point_clique.x()) < 1e-6 and abs(pt.y() - self.point_clique.y()) < 1e-6:
+                if abs(pt.x() - pt_clique_layer.x()) < 1e-5 and abs(pt.y() - pt_clique_layer.y()) < 1e-5:
                     points[i] = QgsPoint(pt.x(), pt.y(), float(self.dlg.lineEditZInterpole.text()))  # Modifier seulement le Z
                     break
 
@@ -200,7 +219,7 @@ class Altibonne:
 
         # Rafraîchir la vue
         self.actualiserSelection()
-        self.layer.triggerRepaint()
+        # self.layer.triggerRepaint()
 
     def changeZentite(self):
         if self.dlg.lineEdit_valZ.text() == "0":
@@ -208,7 +227,6 @@ class Altibonne:
         geom_type = self.layer.wkbType()
         geom_type_str = QgsWkbTypes.displayString(geom_type)
         if geom_type_str == "LineStringZ" or geom_type_str == "MultiLineString":
-            # self.getgeometrie()
             self.layer.startEditing()
             for sel in self.layer.selectedFeatures():
                 geometry = sel.geometry()
@@ -387,34 +405,38 @@ class Altibonne:
 
             # définir le point cliqué pour ensuite le visualiser dans qgis
             qgs_point = QgsPointXY(self.list_x[i], self.list_y[i])
-            # CERCLES VERT
-            if i not in [0, indice_fin_ligne[0] - 1]:
-                cercle = CercleClickable(-TAILLE_CERCLE_INTER/2, -TAILLE_CERCLE_INTER/2,
-                                         TAILLE_CERCLE_INTER, TAILLE_CERCLE_INTER,i,
-                                         qgs_point,self)
-                cercle.setBrush(QColor(0, 255, 0))
-                cercle.setZValue(0)
             # CERCLES ROUGE
-            else:  # début et fin du premier tronçon
-                cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE/2, -TAILLE_CERCLE_EXTREMITE/2,
-                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,
-                                         qgs_point,self)
+            if i in [0, indice_fin_ligne[0] - 1]:
+                cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE / 2, -TAILLE_CERCLE_EXTREMITE / 2,
+                                        TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,qgs_point,self)
                 cercle.setBrush(QColor(255, 0, 0))
+                cercle.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 # force le cercle rouge à passer au-dessus des cercles verts
+                cercle.setZValue(2)
+
+            # CERCLES VERT
+            else:
+                cercle = CercleClickable(-TAILLE_CERCLE_INTER / 2, -TAILLE_CERCLE_INTER / 2,
+                                     TAILLE_CERCLE_INTER, TAILLE_CERCLE_INTER, i,qgs_point, self)
+
+                cercle.setBrush(QColor(0, 255, 0))
+                # garde la taille des cercles fixes, Quel que soit le zoom
+                cercle.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 cercle.setZValue(1)
 
             cercle.setPos(pos_x, pos_z)
             self.scene.addItem(cercle)
 
-            # texte altitude
+            # ALTITUDE sur les sommets
             if self.dlg.checkBox_z.isChecked():
                 altitude_text = QGraphicsTextItem(str(z_point))
                 font = QFont('Arial', TAILLE_TXT_ALT, QFont.Bold)
                 altitude_text.setFont(font)
                 altitude_text.setPos(pos_x - 15, pos_z)
+                altitude_text.setZValue(0)
                 self.scene.addItem(altitude_text)
-
         self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
+
 
     def initGui(self):
         pass
@@ -460,12 +482,11 @@ class Altibonne:
     #     self.scene.addItem(border_item)
 
     def on_resize(self, event):
-        self.layer = self.iface.activeLayer()
-        self.actualiserSelection()
+        print("on_resize")
+        # self.actualiserSelection()
         # Mettre à jour la ligne et la scène
         if self.layer.selectedFeatureCount() == 0:
             return
-        # self.scene.setSceneRect(-10, 0, self.view.width(), self.view.height())
         self.scene.setSceneRect(0, 0, self.view.width(), self.view.height())
         if not self.list_coord:  # None ou dictionnaire vide
             event.accept()
@@ -496,11 +517,6 @@ class Altibonne:
 
     def molette(self,event):
         scale = 1.5
-        # if event.angleDelta().y() > 0:
-        #     self.view.scale(scale, scale)  # Zoom avant
-        # else:
-        #     self.view.scale(1 / scale, 1 / scale)
-        # event.accept()
 
         # position du curseur dans la scene
         cursor_pos = self.view.mapToScene(event.pos())
@@ -543,8 +559,9 @@ class Altibonne:
         self.dlg.label_nb_points.setText(f"Nb de points = {0}")
         self.dlg.label_warning.setText("")
 
-        self.iface.mapCanvas().selectionChanged.connect(self.actualiserSelection)
         self.creerscene()
+        self.iface.mapCanvas().selectionChanged.connect(self.actualiserSelection)
+
 
         # delta z
         # nombre compris entre 0 et 100 avec 1 décimale
@@ -603,7 +620,9 @@ class Altibonne:
         self.dlg.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         # show the dialog
         self.dlg.show()
+
         self.actualiserSelection()
+
         # Run the dialog event loop
         result = self.dlg.exec_()
         if result == QDialog.Rejected:

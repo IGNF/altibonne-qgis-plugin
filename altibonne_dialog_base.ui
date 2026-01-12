@@ -48,7 +48,7 @@
        </property>
        <property name="maximumSize">
         <size>
-         <width>40</width>
+         <width>50</width>
          <height>16777215</height>
         </size>
        </property>
@@ -231,9 +231,12 @@
        </property>
        <property name="maximumSize">
         <size>
-         <width>40</width>
+         <width>50</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -306,7 +309,7 @@
        </property>
        <property name="maximumSize">
         <size>
-         <width>40</width>
+         <width>50</width>
          <height>16777215</height>
         </size>
        </property>
@@ -315,6 +318,9 @@
          <width>0</width>
          <height>0</height>
         </size>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -369,14 +375,16 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>pushButton_actualiser</tabstop>
-  <tabstop>pushButtonUpDown</tabstop>
   <tabstop>lineEditZpoint</tabstop>
   <tabstop>lineEdit_valZ</tabstop>
-  <tabstop>pushButtonChangeZpoint</tabstop>
+  <tabstop>pushButtonUpDown</tabstop>
   <tabstop>lineEdit_seuil_pente</tabstop>
   <tabstop>lineEditZInterpole</tabstop>
+  <tabstop>pushButtonChangeZpoint</tabstop>
   <tabstop>pushButtonApropos</tabstop>
+  <tabstop>checkBox_z</tabstop>
+  <tabstop>checkBox_pente</tabstop>
+  <tabstop>pushButton_actualiser</tabstop>
  </tabstops>
  <resources/>
  <connections/>

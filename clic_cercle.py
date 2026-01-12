@@ -62,9 +62,15 @@ class CercleClickable(QGraphicsEllipseItem):
         d.setSourceCrs(self.parent.layer.crs(), QgsProject.instance().transformContext())
 
         point_courant = QgsPointXY(float(self.parent.list_x[self.indice]), float(self.parent.list_y[self.indice]))
-        point_avant = QgsPointXY(float(self.parent.list_x[self.indice-1]), float(self.parent.list_y[self.indice-1]))
-        point_apres = QgsPointXY(float(self.parent.list_x[self.indice + 1]), float(self.parent.list_y[self.indice + 1]))
-
+        # si on clique le premier point , le point d'avant n'existe pas
+        try:
+            point_avant = QgsPointXY(float(self.parent.list_x[self.indice-1]), float(self.parent.list_y[self.indice-1]))
+        except:
+            return None
+        try:
+            point_apres = QgsPointXY(float(self.parent.list_x[self.indice + 1]), float(self.parent.list_y[self.indice + 1]))
+        except:
+            return None
         distance_total = d.measureLine(point_avant, point_apres)
         distance_avant = d.measureLine(point_avant, point_courant)
 
