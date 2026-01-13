@@ -540,6 +540,7 @@ class Altibonne:
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
         dlgAProposDe.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint)
         dlgAProposDe.setWindowTitle(f"{TITRE} {VERSION}")
+        dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec_()
 
     def run(self):
