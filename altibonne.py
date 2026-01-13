@@ -183,8 +183,9 @@ class Altibonne:
         if self.list_coord is None:
             return
         self.dessine_profil(self.list_coord)
-        # -> forcer le redimensionnement pour mettre a jour la scene 
-        self.dlg.resize(self.dlg.width() + 1, self.dlg.height() + 1)
+        # -> forcer le redimensionnement pour mettre a jour la scene
+        self.dlg.resize(self.dlg.width()+1 , self.dlg.height()+1 )
+        self.dlg.resize(self.dlg.width()-1 , self.dlg.height()-1 )
 
 
     def actualiser_seuil(self):
@@ -621,9 +622,10 @@ class Altibonne:
         self.dlg.setParent(self.iface.mainWindow())
         self.dlg.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         # show the dialog
-        self.dlg.show()
 
         self.actualiserSelection()
+        self.dlg.show()
+
 
 
         # Run the dialog event loop
