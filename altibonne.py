@@ -624,10 +624,8 @@ class Altibonne:
         self.dlg.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         # show the dialog
 
-        self.actualiserSelection()
         self.dlg.show()
-
-
+        self.actualiserSelection()
 
         # Run the dialog event loop
         result = self.dlg.exec_()
