@@ -567,8 +567,8 @@ class Altibonne:
 
 
         # delta z
-        # nombre compris entre 0 et 100 avec 1 décimale
-        regex = QRegularExpression(r"^(?:100(?:\.0)?|(?:\d{1,2})(?:\.\d)?)$")
+        # nombre compris entre -100 et 100 avec 1 décimale
+        regex = QRegularExpression(r"^(-?(100(\.0{1,2})?|(\d{1,2})(\.\d{1,2})?))|(0(\.0{1,2})?)$ ")
         validator = QRegularExpressionValidator(regex, self.dlg)
         self.dlg.lineEdit_valZ.setValidator(validator)
         self.dlg.lineEdit_valZ.setText("0")
