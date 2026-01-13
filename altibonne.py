@@ -540,6 +540,7 @@ class Altibonne:
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
         dlgAProposDe.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint)
         dlgAProposDe.setWindowTitle(f"{TITRE} {VERSION}")
+        dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec_()
 
     def run(self):
@@ -567,8 +568,8 @@ class Altibonne:
 
 
         # delta z
-        # nombre compris entre 0 et 100 avec 1 décimale
-        regex = QRegularExpression(r"^(?:100(?:\.0)?|(?:\d{1,2})(?:\.\d)?)$")
+        # nombre compris entre -100 et 100 avec 1 décimale
+        regex = QRegularExpression(r"^(-?(100(\.0{1,2})?|(\d{1,2})(\.\d{1,2})?))|(0(\.0{1,2})?)$ ")
         validator = QRegularExpressionValidator(regex, self.dlg)
         self.dlg.lineEdit_valZ.setValidator(validator)
         self.dlg.lineEdit_valZ.setText("0")
@@ -623,10 +624,8 @@ class Altibonne:
         self.dlg.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         # show the dialog
 
-        self.actualiserSelection()
         self.dlg.show()
-
-
+        self.actualiserSelection()
 
         # Run the dialog event loop
         result = self.dlg.exec_()

@@ -1,7 +1,16 @@
+import os
+import subprocess
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.PyQt.QtCore import Qt
 
+
+def afficheDoc():
+    fichier = os.path.join(os.path.dirname(__file__), "altibonne.pdf")
+    if not os.path.isfile(fichier):
+        afficheerreur("La documentation est introuvable", "Information")
+    else:
+        subprocess.Popen(['start', '', fichier], shell=True)
 
 def afficheerreur(text, titre="titre"):
     msg = QMessageBox()
