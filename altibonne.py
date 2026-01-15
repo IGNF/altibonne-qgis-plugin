@@ -71,6 +71,12 @@ def points_egau_xy(layer,p1, p2, tol_metre):
     distance = d.measureLine(QgsPointXY(p1.x(), p1.y()), QgsPointXY(p2.x(), p2.y()))
     return distance <= tol_metre
 
+def is_projet_load():
+    project = QgsProject.instance()
+    if not project.fileName():
+        QMessageBox.warning(None, "Avertissement", "Veuillez charger un projet")
+        return False
+    return True
 
 # ============================================
 class Altibonne:
@@ -534,7 +540,6 @@ class Altibonne:
         self.view.centerOn(new_center)
         event.accept()
 
-
     def apropos(self):
         dlgAProposDe = QDialog()
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
@@ -550,6 +555,10 @@ class Altibonne:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         # if self.first_start == True:
         #     self.first_start = False
+
+        if not is_projet_load():
+            return
+
         self.dlg = AltibonneDialog()
         self.dlg.setWindowTitle(f"{TITRE} {VERSION}")
 
