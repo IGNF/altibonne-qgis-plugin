@@ -78,6 +78,7 @@ def is_projet_load():
         return False
     return True
 
+
 # ============================================
 class Altibonne:
     """QGIS Plugin Implementation."""
