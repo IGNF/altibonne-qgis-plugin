@@ -146,6 +146,11 @@ class Altibonne:
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self):
+
+        # Vérifie si la géométrie a un Z
+        if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+            return
+
         if not self.dlg.isVisible():
             return
         self.scene.clear()
@@ -564,6 +569,10 @@ class Altibonne:
         self.dlg.setWindowTitle(f"{TITRE} {VERSION}")
 
         self.layer = self.iface.activeLayer()
+
+        if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+            QMessageBox.warning(self.dlg, "Avertissement", "Ce layer n'a pas de Z")
+            return
 
         # le plugin espace co ne remet pas le curseur par defaut
         # donc je le fais ici.
