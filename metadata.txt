@@ -10,7 +10,7 @@ version=0.2
 author=Gérôme PECHEUR (IGN)
 email=gerome.pecheur@ign.fr
 
-about=Provide a brief description of the plugin and its purpose.
+about=Visualisation et modification d'un profil
 
 tracker=http://bugs
 repository=http://repo
