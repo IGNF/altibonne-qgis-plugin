@@ -497,7 +497,6 @@ class Altibonne:
     #     self.scene.addItem(border_item)
 
     def on_resize(self, event):
-        print("on_resize")
         # self.actualiserSelection()
         # Mettre à jour la ligne et la scène
         if self.layer.selectedFeatureCount() == 0:
@@ -555,13 +554,6 @@ class Altibonne:
         dlgAProposDe.exec_()
 
     def run(self):
-        """Run method that performs all the real work"""
-
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        # if self.first_start == True:
-        #     self.first_start = False
-
         if not is_projet_load():
             return
 
