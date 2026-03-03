@@ -1,5 +1,5 @@
 TITRE = "Altibonne"
-VERSION = "v0.2"
+VERSION = "v0.3"
 
 TAILLE_TXT_PENTE = 7
 TOLERANCE_PT_CONFONDU = 0.1 # en métre
