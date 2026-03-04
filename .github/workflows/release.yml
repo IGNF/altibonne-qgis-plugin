@@ -21,7 +21,12 @@ jobs:
 
       - name: Build plugin zip
         run: |
-          zip -r "IGN_altibonne.zip" . -x ".git/*" ".github/*"
+          mkdir -p IGN_altibonne
+          rsync -av --progress . IGN_altibonne/ \
+            --exclude .git \
+            --exclude .github \
+            --exclude IGN_altibonne
+          zip -r IGN_altibonne.zip IGN_altibonne
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
