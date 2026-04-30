@@ -9,6 +9,7 @@ description=Gestion des profils
 version=0.3.0
 author=Gérôme PECHEUR (IGN)
 email=gerome.pecheur@ign.fr
+license=GNU AGPL v3
 
 about=Visualisation et modification d'un profil
 
