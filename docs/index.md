@@ -72,21 +72,21 @@ Allez dans **Extensions/Installer/Gérer les extensions**, cliquez sur **Install
 	<img  src="Image2.jpg" /> 
 </div>  
 
-- 1.	Zone d‘affichage du profil  
-- 2.	Valeur de delta Z permettant de relever ou d’abaisser tous les Z du linéaire sélectionné.  
-- 3.	Valeur du Z correspondant au point sélectionné sur le linéaire.  
-- 4.	Valeur du Z interpolé du point sélectionné correspondant à l'interpolation avec le Z du point avant et après sur le linéaire. Cette valeur peut être modifiée.  
-- 5.	Valide la modification du linéaire en prenant en compte le delta Z renseigné.  
-- 6.	Valide la modification du Z du point sélectionné en prenant en compte le Z interpolé ou tout autre Z renseigné par l’utilisateur.  
-- 7.	Seuil de détection de pente, les segments du profil qui sont hors du seuil apparaissent en rouge.  
-- 8.	Permet d’actualiser la vue du profil après un changement du seuil de détection de pente.  
-- 9.	Ouvre une fenêtre retraçant l’historique des versions, cette documentation y est également accessible.  
+1.	Zone d‘affichage du profil  
+2.	Valeur de delta Z permettant de relever ou d’abaisser tous les Z du linéaire sélectionné.  
+3.	Valeur du Z correspondant au point sélectionné sur le linéaire.  
+4.	Valeur du Z interpolé du point sélectionné correspondant à l'interpolation avec le Z du point avant et après sur le linéaire. Cette valeur peut être modifiée.  
+5.	Valide la modification du linéaire en prenant en compte le delta Z renseigné.  
+6.	Valide la modification du Z du point sélectionné en prenant en compte le Z interpolé ou tout autre Z renseigné par l’utilisateur.  
+7.	Seuil de détection de pente, les segments du profil qui sont hors du seuil apparaissent en rouge.  
+8.	Permet d’actualiser la vue du profil après un changement du seuil de détection de pente.  
+9.	Ouvre une fenêtre retraçant l’historique des versions, cette documentation y est également accessible.  
 
 
 
   
 <div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="5-mode-de-sélection" style="color: #00ADC5">5. Utilisation</h2>
+  <h2 id="5-utilisation" style="color: #00ADC5">5. Utilisation</h2>
 </div>
 
 ### <span style="color: white; background-color: #00ADC5; padding: 2px 5px;">5.1 Modification des Z d'un linéaire entier</span>  
@@ -105,8 +105,8 @@ L’interface s’actualise afin d’afficher le nouveau profil.
 
 ### <span style="color: white; background-color: #00ADC5; padding: 2px 5px;">5.3 Navigation</span>  
 Il est possible de :  
-- 1.	Agrandir/rétrécir l’interface --> le profil suit.  
-- 2.	Se déplacer dans le profil avec un clic gauche + déplacement (en dehors d’un point)  
-- 3.	Zoomer dans le profil avec la molette de la souris  
+1.	Agrandir/rétrécir l’interface --> le profil suit.  
+2.	Se déplacer dans le profil avec un clic gauche + déplacement (en dehors d’un point)  
+3.	Zoomer dans le profil avec la molette de la souris  
 
 
