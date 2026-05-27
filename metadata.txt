@@ -5,15 +5,17 @@
 [general]
 name=IGN Altibonne
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
 description=Gestion des profils
-version=0.3.0
+version=0.3.0_recette
 author=Gérôme PECHEUR (IGN)
 email=gerome.pecheur@ign.fr
 
 about=Visualisation et modification d'un profil
 
-tracker=http://bugs
-repository=http://repo
+homepage=https://ignf.github.io/altibonne-qgis-plugin/
+tracker=https://github.com/IGNF/altibonne-qgis-plugin/issues
+repository=https://github.com/IGNF/altibonne-qgis-plugin
 # End of mandatory metadata
 
 # Recommended items:
@@ -25,7 +27,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python
 
-homepage=http://homepage
+
 category=Plugins
 icon=icons/icon_principal.png
 # experimental flag
