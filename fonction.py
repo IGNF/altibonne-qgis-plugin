@@ -1,23 +1,17 @@
-import os
-import subprocess
+import webbrowser
 
-from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.PyQt.QtCore import Qt
+from .mapping_version import *
 
 
 def afficheDoc():
-    fichier = os.path.join(os.path.dirname(__file__), "altibonne.pdf")
-    if not os.path.isfile(fichier):
-        afficheerreur("La documentation est introuvable", "Information")
-    else:
-        subprocess.Popen(['start', '', fichier], shell=True)
+    webbrowser.open("https://ignf.github.io/altibonne-qgis-plugin/")
 
 def afficheerreur(text, titre="titre"):
     msg = QMessageBox()
 
-    msg.setIcon(QMessageBox.Warning)
+    msg.setIcon(Warning)
     msg.setWindowTitle(titre)
-    msg.setStandardButtons(QMessageBox.Ok)
+    msg.setStandardButtons(Ok)
     msg.setText(text)
     msg.setWindowFlags(Qt.WindowStaysOnTopHint)
     msg.exec()
@@ -25,13 +19,13 @@ def afficheerreur(text, titre="titre"):
 
 def affichemessageAvertissement(text, titre):
     msg = QMessageBox()
-    msg.setIcon(QMessageBox.Warning)
+    msg.setIcon(Warning)
 
     msg.setWindowTitle(titre)
     msg.setText(text)
-    btnAnnuler = msg.addButton("Annuler", QMessageBox.YesRole)
+    btnAnnuler = msg.addButton("Annuler", YesRole)
     btnAnnuler.setStyleSheet("color:red ; font-weight: bold")
-    btnValider = msg.addButton("valider les modifications", QMessageBox.AcceptRole)
+    btnValider = msg.addButton("valider les modifications", AcceptRole)
     btnValider.setStyleSheet("color:green ; font-weight: bold")
     msg.setWindowFlags(Qt.WindowStaysOnTopHint)
     msg.exec()

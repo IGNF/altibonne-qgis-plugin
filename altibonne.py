@@ -23,10 +23,10 @@
 """
 import os
 
-from PyQt5.QtCore import QLocale, QRegularExpression, QTimer
-from PyQt5.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
-from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog, QGraphicsItem
-from PyQt5.uic import loadUi
+from qgis.PyQt.QtCore import QLocale, QRegularExpression, QTimer
+from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
+from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog, QGraphicsItem
+from qgis.PyQt.uic import loadUi
 
 from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
 from qgis.core import QgsGeometry, QgsWkbTypes, QgsPoint
@@ -36,6 +36,7 @@ from .altibonne_dialog import AltibonneDialog
 from .fonction import *
 from .constante import *
 from .clic_cercle import *
+from .mapping_version import *
 
 def fusion_points(l1, l2):
     return l1 + l2
@@ -468,11 +469,10 @@ class Altibonne:
         # deplacement dans la vue
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
         self.view.setStyleSheet("QGraphicsView { border: 3px solid black; }")
-        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(ScrollBarAlwaysOff)
         # self.dlg.setContentsMargins(0, 50, 0, 0)
-        self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
+        self.view.setSizePolicy(Expanding,Expanding)
 
         # Ajouter sur la dernière ligne
         last_row = self.dlg.gridLayout.rowCount()
@@ -481,20 +481,6 @@ class Altibonne:
         # self.dlg.gridLayout.addWidget(self.view)
         self.dlg.gridLayout.addWidget(self.view, 2, 0, 1, self.dlg.gridLayout.columnCount())
 
-        # self.dlg.widgetScene.setLayout(self.dlg.verticalLayout)
-        # self.layoutscene.addWidget(self.view)
-        # Définir le layout principal de dlg
-        # self.dlg.setLayout(self.layoutscene)
-
-    # def add_scene_border(self):
-    #     # Créer un rectangle qui servira de contour autour de la scène
-    #     scene_rect = self.scene.sceneRect()
-    #     border_item = QGraphicsRectItem(scene_rect)
-    #
-    #     # # Appliquer un style au contour (bordure)
-    #     border_item.setPen(Qt.black)  # Bordure noire
-    #     border_item.setBrush(Qt.transparent)  # Fond transparent
-    #     self.scene.addItem(border_item)
 
     def on_resize(self, event):
         # self.actualiserSelection()
@@ -508,12 +494,6 @@ class Altibonne:
         self.dessine_profil(self.list_coord)
         event.accept()
 
-    # def mousepressevent(self,event):
-    #     if event.button() == Qt.MiddleButton:
-    #         self.last_mouse_pos = event.pos()
-    #
-    #     event.accept()
-
     def mousemoveevent(self,event):
         if self.last_mouse_pos:
             # Calculer le déplacement de la souris
@@ -525,7 +505,7 @@ class Altibonne:
             event.accept()
 
     def mousereleaseevent(self,event):
-        if event.button() == Qt.MiddleButton:
+        if event.button() == MiddleButton:
             self.last_mouse_pos = None  # Réinitialiser la position de la souris
             event.accept()
 
@@ -548,10 +528,10 @@ class Altibonne:
     def apropos(self):
         dlgAProposDe = QDialog()
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
-        dlgAProposDe.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint)
+        dlgAProposDe.setWindowFlags(WindowStaysOnTopHint | WindowCloseButtonHint)
         dlgAProposDe.setWindowTitle(f"{TITRE} {VERSION}")
         dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
-        dlgAProposDe.exec_()
+        dlgAProposDe.exec()
 
     def run(self):
         if not is_projet_load():
@@ -632,14 +612,14 @@ class Altibonne:
         self.dlg.wheelEvent = self.molette
 
         self.dlg.setParent(self.iface.mainWindow())
-        self.dlg.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
+        self.dlg.setWindowFlags(Dialog | WindowTitleHint | WindowCloseButtonHint)
         # show the dialog
 
         self.dlg.show()
         self.actualiserSelection()
 
         # Run the dialog event loop
-        result = self.dlg.exec_()
+        result = self.dlg.exec()
         if result == QDialog.Rejected:
             # suppression de tous les marqueurs (pointer le point cliqué) lorsque on quitte
             for m in self.liste_markers:

@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QGraphicsEllipseItem
-from PyQt5.QtCore import Qt
-from qgis._core import QgsDistanceArea, QgsPointXY
-from qgis.core import QgsCoordinateTransform, QgsProject
+from qgis.PyQt.QtWidgets import QGraphicsEllipseItem
+from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsCoordinateTransform, QgsProject,QgsDistanceArea, QgsPointXY
 from qgis.gui import QgsVertexMarker
+
+from .mapping_version import *
 
 
 class CercleClickable(QGraphicsEllipseItem):
@@ -10,7 +11,7 @@ class CercleClickable(QGraphicsEllipseItem):
         super().__init__(x, y, w, h)
         self.setFlags(QGraphicsEllipseItem.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
-        self.setAcceptedMouseButtons(Qt.LeftButton)  # accepter clic gauche
+        self.setAcceptedMouseButtons(LeftButton)  # accepter clic gauche
         self.indice = indice
         self.entite_id = entite_id
         self.parent = parent
@@ -33,7 +34,7 @@ class CercleClickable(QGraphicsEllipseItem):
         self.parent.liste_markers.clear()
 
         self.marker = QgsVertexMarker(self.parent.iface.mapCanvas())
-        self.marker.setColor(Qt.red)
+        self.marker.setColor(red)
         self.marker.setIconSize(10)
         self.marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
         self.marker.setPenWidth(2)
@@ -49,11 +50,11 @@ class CercleClickable(QGraphicsEllipseItem):
         super().mousePressEvent(event)
 
     def hoverEnterEvent(self, event):
-        self.setCursor(Qt.CrossCursor)
+        self.setCursor(CrossCursor)
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
-        self.setCursor(Qt.ArrowCursor)
+        self.setCursor(ArrowCursor)
         # self.lineedit_altitude.setText("")
         super().hoverLeaveEvent(event)
 
