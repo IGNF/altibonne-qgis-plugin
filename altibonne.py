@@ -529,7 +529,7 @@ class Altibonne:
         dlgAProposDe = QDialog()
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
         dlgAProposDe.setWindowFlags(WindowStaysOnTopHint | WindowCloseButtonHint)
-        dlgAProposDe.setWindowTitle(f"{TITRE} {VERSION}")
+        dlgAProposDe.setWindowTitle(f"{TITRE}")
         dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec()
 
@@ -538,7 +538,7 @@ class Altibonne:
             return
 
         self.dlg = AltibonneDialog()
-        self.dlg.setWindowTitle(f"{TITRE} {VERSION}")
+        self.dlg.setWindowTitle(f"{TITRE}")
 
         self.layer = self.iface.activeLayer()
 
