@@ -1,3 +1,4 @@
+
 # This file contains metadata for your plugin.
 
 # This file should be included when you package your plugin.# Mandatory items:
@@ -5,16 +6,17 @@
 [general]
 name=IGN Altibonne
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
 description=Gestion des profils
-version=0.3.0
+version=0.3.1
 author=Gérôme PECHEUR (IGN)
 email=gerome.pecheur@ign.fr
-license=GNU AGPL v3
 
 about=Visualisation et modification d'un profil
 
-tracker=http://bugs
-repository=http://repo
+homepage=https://ignf.github.io/altibonne-qgis-plugin/
+tracker=https://github.com/IGNF/altibonne-qgis-plugin/issues
+repository=https://github.com/IGNF/altibonne-qgis-plugin
 # End of mandatory metadata
 
 # Recommended items:
@@ -26,7 +28,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python
 
-homepage=http://homepage
+
 category=Plugins
 icon=icons/icon_principal.png
 # experimental flag
@@ -45,4 +47,5 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
+
 
