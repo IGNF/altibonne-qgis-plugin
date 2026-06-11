@@ -1,39 +1,44 @@
-# Plugin QGis Altibonne
-
-## Version 0.1.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IGN - DTSO 
 
 
-<div  style="text-align: left;"> 
-	<img  src="Image0.jpg"  height = 110/> 
-</div>
 
-<hr style="border-color:  #98BF18; "/>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 78%" />
+</colgroup>
+<tbody>
+<tr>
+<td rowspan="2"><img src="images/Image0.jpg"
+style="width:1.38681in;height:1.47153in"
+alt="logo_IGN_pour_lettre" /></td>
+<td style="font-size: 24px;text-align: center;"><p><strong>Manuel utilisateur du plugin
+« Altibonne »</strong></p>
+<p><strong>V0.3.1</strong></p></td>
+</tr>
+<tr>
+<td style="font-size: 16px;text-align: center;">Développeur  : Gérôme PECHEUR (IGN)</td>
+</tr>
+</tbody>
+</table>
 
-| Version | Date  | Modifié par | Commentaire |
-|--|--|--|--|
-| 0.1 | 13/01/2026 | Gérôme PECHEUR | Création du manuel utilisateur  |
+
+## Sommaire
 
 
-<hr style="border-color:  #98BF18; "/>
-
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 style="color: #00ADC5">Sommaire</h2>
-</div>
-
-- [1. Prérequis](#1-prérequis)
-- [2. Résumé](#2-résumé)
-- [3. Installation](#3-installation)
-- [4. Présentation](#4-présentation)
-- [5. Utilisation](#5-utilisation)
-  - [5.1 Modification des Z d'un linéaire entier](#51-modification-des-z-dun-linéaire-entier)
-  - [5.2 Modification du Z d'un point](#52-modification-du-z-dun-point)
-  - [5.3 Navigation](#53-navigation) 
+- [1. Prérequis](#prerequis)
+- [2. Résumé](#resume)
+- [3. Installation](#installation)
+- [4. Présentation](#presentation)
+- [5. Utilisation](#5utilisation)
+  - [5.1 Modification des Z d'un linéaire entier](#modification-des-z-dun-lineaire-entier)
+  - [5.2 Modification du Z d'un point](#modification-du-z-dun-point)
+  - [5.3 Navigation](#navigation) 
 
 
 
   
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="1-prérequis" style="color: #00ADC5" >1. Prérequis</h2>
+<div  style="background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="prerequis" style="color: white;margin:0;" >1. Prérequis</h2>
 </div>
 
 Version de QGIS 3 : 3.28 ou supérieure.  
@@ -41,10 +46,10 @@ Ce plugin fonctionne en parallèle du plugin « IGN Espace collaboratif » versi
 
 
 
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="2-résumé" style="color: #00ADC5">2. Résumé</h2>
-</div>  
-  
+<div  style="background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="resume" style="color: white;margin:0;" >2. Résumé</h2>
+</div>
+
 Ce plugin permet : 
 -	De visualiser un profil sur des entités linéaires.  
 -	De « relever/abaisser » tous les z d’un linéaire.  
@@ -52,24 +57,24 @@ Ce plugin permet :
 
   
   
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="3-installation" style="color: #00ADC5">3. Installation</h2>
-</div>  
-  
+<div  style="background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="installation" style="color: white;margin:0;" >3. Installation</h2>
+</div> 
+
 Ouvrir QGIS.  
 Allez dans **Extensions/Installer/Gérer les extensions**, cliquez sur **Installer depuis un ZIP**, sélectionner le fichier ZIP puis cliquez sur **Installer le plugin**.  
 
 <div  style="text-align: center;"> 
-	<img  src="Image1.png" /> 
+	<img  src="images/Image1.png" /> 
 </div>  
   
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="4-présentation" style="color: #00ADC5">4. Présentation</h2>
+<div  style="background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="presentation" style="color: white;margin:0;" >4. Présentation</h2>
 </div>  
   
 
 <div  style="text-align: center;"> 
-	<img  src="Image2.jpg" /> 
+	<img  src="images/Image2.jpg" /> 
 </div>  
 
 1.	Zone d‘affichage du profil  
@@ -84,26 +89,32 @@ Allez dans **Extensions/Installer/Gérer les extensions**, cliquez sur **Install
 
 
 
-  
-<div  style="background-color: white; border: 1px solid black; padding: 10px; text-align: justify;">
-  <h2 id="5-utilisation" style="color: #00ADC5">5. Utilisation</h2>
+ <div  style="background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="utilisation" style="color: white;margin:0;" >5. Utilisation</h2>
 </div>
 
-### <span style="color: white; background-color: #00ADC5; padding: 2px 5px;">5.1 Modification des Z d'un linéaire entier</span>  
-Après avoir renseigné un delta Z, le bouton ![Image3](Image3.png) modifie les z de tous les points constituant le ou les linéaires sélectionnés.  
+<div  style="font-size: 10px;background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="modification-des-z-dun-lineaire-entier" style="color: white;margin:0;" >5.1 Modification des Z d'un linéaire entier</h2>
+</div>
+
+Après avoir renseigné un delta Z, le bouton ![Image3](images/Image3.png) modifie les z de tous les points constituant le ou les linéaires sélectionnés.  
 Le delta Z doit être compris entre -100 et 100 (mètres)  
 
 
+<div  style="font-size: 10px;background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="modification-du-z-dun-point" style="color: white;margin:0;" >5.2 Modification du Z d'un point</h2>
+</div>
 
-### <span style="color: white; background-color: #00ADC5; padding: 2px 5px;">5.2 Modification du Z d'un point</span>  
 Il faut sélectionner un point du linéaire sur le profil (clic gauche).  
 Sur l’interface, le Z actuel du point est renseigné.  
 Le Z interpolé est également renseigné. L’utilisateur peut modifier cette valeur s’il souhaite donner un Z différent de celui proposé.  
-Le bouton ![Image4](Image4.png) modifie le Z du point sélectionné.  
+Le bouton ![Image4](images/Image4.png) modifie le Z du point sélectionné.  
 L’interface s’actualise afin d’afficher le nouveau profil.  
 
+<div  style="font-size: 10px;background-color: #00ADC5; border: 1px solid black; padding: 5px; text-align: justify;margin-bottom:10px;">
+  <h2 id="navigation" style="color: white;margin:0;" >5.3 Navigation</h2>
+</div>
 
-### <span style="color: white; background-color: #00ADC5; padding: 2px 5px;">5.3 Navigation</span>  
 Il est possible de :  
 1.	Agrandir/rétrécir l’interface --> le profil suit.  
 2.	Se déplacer dans le profil avec un clic gauche + déplacement (en dehors d’un point)  
