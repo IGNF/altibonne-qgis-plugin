@@ -23,9 +23,9 @@
 """
 import os
 
-from qgis.PyQt.QtCore import QLocale, QRegularExpression, QTimer
-from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
-from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog, QGraphicsItem
+from qgis.PyQt.QtCore import  QRegularExpression, QSettings, QPoint, QSize
+from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QRegularExpressionValidator
+from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QGraphicsItem
 from qgis.PyQt.uic import loadUi
 
 from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
@@ -534,12 +534,43 @@ class Altibonne:
         dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec()
 
+    def sauve_position_dial(self):
+        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope,
+                             "IGN", TITRE)
+        settings.setValue("position", self.dlg.pos())
+        settings.setValue("taille", self.dlg.size())
+
+    def restore_position_dial(self):
+        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope, "IGN", TITRE)
+        pos = settings.value("position", type=QPoint)
+        size = settings.value("taille", type=QSize)
+        if pos is None:
+            return
+        screens = QApplication.screens()
+        multi = len(screens) > 1
+        # Vérifie si la position est sur un des écrans
+        on_screen = any(screen.geometry().contains(pos) for screen in screens)
+        if on_screen:
+            self.dlg.move(pos)
+            if size:
+                self.dlg.resize(size)
+        else:
+            # Si un seul écran → replacer en haut-gauche
+            if not multi:
+                self.dlg.move(QPoint(0, 0))
+            else:
+                # Multi-écran mais position invalide → centrer sur écran principal
+                primary = QApplication.primaryScreen().geometry()
+                center = primary.center()
+                self.dlg.move(center - self.dlg.rect().center())
+
     def run(self):
         if not is_projet_load():
             return
 
         self.dlg = AltibonneDialog()
         self.dlg.setWindowTitle(f"{TITRE}")
+        self.restore_position_dial()
 
         self.layer = self.iface.activeLayer()
 
@@ -622,7 +653,8 @@ class Altibonne:
         # Run the dialog event loop
         result = self.dlg.exec()
         if result == QDialog.Rejected:
-            # suppression de tous les marqueurs (pointer le point cliqué) lorsque on quitte
+            self.sauve_position_dial()
+            # suppression de tous les marqueurs (pointer le point cliqué) lorsqu'on quitte
             for m in self.liste_markers:
                 self.iface.mapCanvas().scene().removeItem(m)
             self.liste_markers.clear()
