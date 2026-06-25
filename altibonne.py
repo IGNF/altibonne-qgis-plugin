@@ -643,6 +643,8 @@ class Altibonne:
 
     def initGui(self):
         self.iface.projectRead.connect(self.on_project_opened)
+        # événement fermeture de qgis
+        QgsApplication.instance().aboutToQuit.connect(self.fermeture_qgis)
 
     def on_dialog_closed(self):
         self.sauve_position_dial()
@@ -662,6 +664,8 @@ class Altibonne:
         self.dlg = None
 
     def run(self):
+        if self.dlg is not None:
+            return
         if not is_projet_load():
             return
 
@@ -698,8 +702,6 @@ class Altibonne:
         self.creerscene()
         # événement actualisation selection
         self.iface.mapCanvas().selectionChanged.connect(self.actualiserSelection)
-        # événement fermeture de qgis
-        QgsApplication.instance().aboutToQuit.connect(self.fermeture_qgis)
 
         # delta z
         # nombre compris entre -100 et 100 avec 1 décimale
