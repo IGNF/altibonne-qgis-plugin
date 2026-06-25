@@ -472,6 +472,8 @@ class Altibonne:
                 altitude_text.setFont(font)
                 altitude_text.setPos(pos_x - 15, pos_z)
                 altitude_text.setZValue(0)
+                # le texte garde une taille fixe à l'écran malgré le zoom
+                altitude_text.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 self.scene.addItem(altitude_text)
         self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
 
