@@ -147,6 +147,8 @@ class Altibonne:
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self):
+        self.point_clique = None
+        print(self.point_clique)
 
         # Vérifie si la géométrie a un Z
         if not QgsWkbTypes.hasZ(self.layer.wkbType()):
@@ -168,18 +170,19 @@ class Altibonne:
         self.dlg.pushButtonChangeZpoint.setEnabled(False)
 
         self.layer = self.iface.activeLayer()
-        if self.layer.selectedFeatureCount() == 0:
-            self.dlg.lineEdit_valZ.setText("0")
-            self.dlg.lineEditZpoint.setText("0")
-            self.dlg.lineEditZInterpole.setText("0")
-            self.dlg.label_warning.setText("")
-            return
+        # if self.layer.selectedFeatureCount() == 0:
+        self.point_clique = None
+        self.dlg.lineEdit_valZ.setText("0")
+        self.dlg.lineEditZpoint.setText("0")
+        self.dlg.lineEditZInterpole.setText("0")
+        self.dlg.label_warning.setText("")
+        # return
 
-        elif self.layer.selectedFeatureCount() == 1:
-            self.dlg.pushButtonUpDown.setEnabled(True)
+        # elif self.layer.selectedFeatureCount() == 1:
+        #     self.dlg.pushButtonUpDown.setEnabled(True)
 
-        elif self.layer.selectedFeatureCount() == 2:
-            self.dlg.pushButtonUpDown.setEnabled(True)
+        if self.layer.selectedFeatureCount() == 2:
+            # self.dlg.pushButtonUpDown.setEnabled(True)
             selection = self.layer.selectedFeatures()
             sel1 = selection[0]
             sel2 = selection[1]
@@ -235,7 +238,24 @@ class Altibonne:
 
         # Rafraîchir la vue
         self.actualiserSelection()
-        # self.layer.triggerRepaint()
+
+    # test sur la saisie des linedit
+    # lineedit  : linedit à tester
+    # pushbutton : bouton associé poir gerer le setEnabled
+    def is_saisie_valide(self,linedit,pushbutton):
+        texte = linedit.text()
+        if texte == "" or texte == "0":
+            pushbutton.setEnabled(False)
+        else:
+            pushbutton.setEnabled(True)
+
+        # cas particulier :
+        # si aucun point n'est sélectionné -> on masque le bouton de changement de z d'un point)
+        if not self.point_clique:
+            self.dlg.pushButtonChangeZpoint.setEnabled(False)
+
+
+
 
     def changeZentite(self):
         if self.dlg.lineEdit_valZ.text() == "0" or self.dlg.lineEdit_valZ.text() == "":
@@ -614,13 +634,17 @@ class Altibonne:
         # a propos...
         self.dlg.pushButtonApropos.clicked.connect(self.apropos)
 
-        # evenement bouton
+        # événement bouton
         self.dlg.pushButton_actualiser.clicked.connect(self.actualiser_seuil)
         self.dlg.pushButton_actualiser.setStyleSheet(CUSTOM_WIDGETS[1])
         self.dlg.pushButtonUpDown.clicked.connect(self.changeZentite)
         self.dlg.pushButtonUpDown.setStyleSheet(CUSTOM_WIDGETS[0])
         self.dlg.pushButtonChangeZpoint.clicked.connect(self.changeZpoint)
         self.dlg.pushButtonChangeZpoint.setStyleSheet(CUSTOM_WIDGETS[0])
+
+        # événement du lineedit
+        self.dlg.lineEdit_valZ.textEdited.connect(lambda :self.is_saisie_valide(self.dlg.lineEdit_valZ,self.dlg.pushButtonUpDown))
+        self.dlg.lineEditZInterpole.textEdited.connect(lambda: self.is_saisie_valide(self.dlg.lineEditZInterpole,self.dlg.pushButtonChangeZpoint))
 
         # signal des checkbox
         self.dlg.checkBox_z.stateChanged.connect(self.actualiserSelection)
