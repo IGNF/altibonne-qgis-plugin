@@ -147,11 +147,19 @@ class Altibonne:
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self):
+        self.layer = self.iface.activeLayer()
+
         self.point_clique = None
 
-        # Vérifie si la géométrie a un Z
         if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+            QMessageBox.warning(self.dlg, "Avertissement",
+                                f"La couche <span style = 'color:red'><b>{self.layer.name()}"
+                                f" ({QgsWkbTypes.displayString(self.layer.wkbType())})</b></span> n'a pas de Z")
             return
+
+        # # Vérifie si la géométrie a un Z
+        # if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+        #     return
 
         if not self.dlg.isVisible():
             return
@@ -168,7 +176,7 @@ class Altibonne:
         self.dlg.pushButtonUpDown.setEnabled(False)
         self.dlg.pushButtonChangeZpoint.setEnabled(False)
 
-        self.layer = self.iface.activeLayer()
+
         # if self.layer.selectedFeatureCount() == 0:
         self.point_clique = None
         self.dlg.lineEdit_valZ.setText("0")
@@ -598,7 +606,8 @@ class Altibonne:
         self.layer = self.iface.activeLayer()
 
         if not QgsWkbTypes.hasZ(self.layer.wkbType()):
-            QMessageBox.warning(self.dlg, "Avertissement", "Ce layer n'a pas de Z")
+            QMessageBox.warning(self.dlg, "Avertissement", f"La couche <span style = 'color:red'><b>{self.layer.name()}"
+                                                           f" ({QgsWkbTypes.displayString(self.layer.wkbType())})</b></span> n'a pas de Z")
             return
 
         # le plugin espace co ne remet pas le curseur par defaut
@@ -681,6 +690,11 @@ class Altibonne:
         result = self.dlg.exec()
         if result == QDialog.Rejected:
             self.sauve_position_dial()
+            # on deconnecte le signal en quittant
+            try:
+                self.iface.mapCanvas().selectionChanged.disconnect(self.actualiserSelection)
+            except TypeError:
+                pass  # aucune connexion existante
             # suppression de tous les marqueurs (pointer le point cliqué) lorsqu'on quitte
             for m in self.liste_markers:
                 self.iface.mapCanvas().scene().removeItem(m)
