@@ -148,7 +148,6 @@ class Altibonne:
 
     def actualiserSelection(self):
         self.point_clique = None
-        print(self.point_clique)
 
         # Vérifie si la géométrie a un Z
         if not QgsWkbTypes.hasZ(self.layer.wkbType()):
@@ -423,13 +422,15 @@ class Altibonne:
         # la couleur est en fonction de la pente
         self.dessine_segment(d,self.list_z, self.list_x, self.list_y,distances_cumulees,distance_totale)
 
-        # indices de fin de ligne pour cercles rouges
-        indice_fin_ligne = []
-        count = 0
-        for ligne in self.layer.selectedFeatures():
-            nb_points = len(list(ligne.geometry().vertices()))
-            count += nb_points
-            indice_fin_ligne.append(count)
+
+        # indices des points à afficher en rouge
+        selection = self.layer.selectedFeatures()
+        points_rouges = {0, len(self.list_z) - 1}
+
+        if len(selection) == 2:
+            nb_points_l1 = len(list(selection[0].geometry().vertices()))
+            points_rouges.add(nb_points_l1 - 1)  # dernier point tronçon 1
+            points_rouges.add(nb_points_l1)  # premier point tronçon 2
 
         # ==============
         # DESSIN des cercles et altitudes sur les sommets
@@ -443,7 +444,7 @@ class Altibonne:
             # définir le point cliqué pour ensuite le visualiser dans qgis
             qgs_point = QgsPointXY(self.list_x[i], self.list_y[i])
             # CERCLES ROUGE
-            if i in [0, indice_fin_ligne[0] - 1]:
+            if i in points_rouges:
                 cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE / 2, -TAILLE_CERCLE_EXTREMITE / 2,
                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,qgs_point,self)
                 cercle.setBrush(QColor(255, 0, 0))
