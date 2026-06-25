@@ -238,7 +238,8 @@ class Altibonne:
         # self.layer.triggerRepaint()
 
     def changeZentite(self):
-        if self.dlg.lineEdit_valZ.text() == "0":
+        if self.dlg.lineEdit_valZ.text() == "0" or self.dlg.lineEdit_valZ.text() == "":
+            self.dlg.lineEdit_valZ.setText("0")
             return
         geom_type = self.layer.wkbType()
         geom_type_str = QgsWkbTypes.displayString(geom_type)
