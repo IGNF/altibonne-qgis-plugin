@@ -23,13 +23,13 @@
 """
 import os
 
-from qgis.PyQt.QtCore import QLocale, QRegularExpression, QTimer
-from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QDoubleValidator, QRegularExpressionValidator
-from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QSizePolicy, QDialog, QGraphicsItem
+from qgis.PyQt.QtCore import  QRegularExpression, QSettings, QPoint, QSize
+from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QRegularExpressionValidator
+from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QGraphicsItem
 from qgis.PyQt.uic import loadUi
 
 from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
-from qgis.core import QgsGeometry, QgsWkbTypes, QgsPoint
+from qgis.core import QgsGeometry, QgsWkbTypes, QgsPoint,QgsApplication
 
 # Import the code for the dialog
 from .altibonne_dialog import AltibonneDialog
@@ -47,13 +47,13 @@ def orienter_lignes(layer,sommets_l1, sommets_l2):
 
     # Comparer seulement les x et les y
     if points_egau_xy(layer,p1_end, p2_start, TOLERANCE_PT_CONFONDU):
-        # L1 , L2 sans inversion
+        # L1, L2 sans inversion
         return sommets_l1, sommets_l2
     elif points_egau_xy(layer,p1_end, p2_end, TOLERANCE_PT_CONFONDU):
-        # L1 , L2 inversée
+        # L1, L2 inversée
         return sommets_l1, list(reversed(sommets_l2))
     elif points_egau_xy(layer,p1_start, p2_end, TOLERANCE_PT_CONFONDU):
-        # L1 inversée , L2 inversés
+        # L1 inversée, L2 inversés
         return list(reversed(sommets_l1)), list(reversed(sommets_l2))
     elif points_egau_xy(layer,p1_start, p2_start, TOLERANCE_PT_CONFONDU):
         # L1 inversée
@@ -62,7 +62,7 @@ def orienter_lignes(layer,sommets_l1, sommets_l2):
     # Pas de point commun sur les extrémités
     return None, None
 
-# le z peut être different pour que 2 troncons soient contigües
+# le z peut être different pour que 2 tronçons soient contigües
 def points_egau_xy(layer,p1, p2, tol_metre):
     """Compare deux points en coordonnées réelles avec tolérance en mètres"""
     d = QgsDistanceArea()
@@ -99,6 +99,7 @@ class Altibonne:
         self.seuil_pente = 0
         self.iface = iface
         self.point_clique = None
+        self.texte_scene = None
         # liste des marqueurs pour "pointer" un point cliqué dans qgis
         self.liste_markers = []
         self.first_start = True
@@ -147,9 +148,29 @@ class Altibonne:
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self):
+        self.layer = self.iface.activeLayer()
 
-        # Vérifie si la géométrie a un Z
-        if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+        # Il faut réinitialiser avant tout
+        self.point_clique = None
+        self.list_coord = None
+
+
+        if self.layer.selectedFeatureCount() == 0:
+            self.ecrire_dans_scene("La sélection est vide")
+            return
+
+        # si layer sans z
+        if not self.is_layer_valide():
+            # QMessageBox.warning(self.dlg, "Avertissement",
+            #                     f"La couche <span style = 'color:red'><b>{self.layer.name()}"
+            #                     f" ({QgsWkbTypes.displayString(self.layer.wkbType())})</b></span> n'a pas de Z")
+            texte = f"La couche : {self.layer.name()} n'a pas de Z"
+            self.ecrire_dans_scene(texte)
+            return
+
+        # si autre chose que linéaire
+        if not self.is_type_geom_valide():
+            self.ecrire_dans_scene("La sélection doit être un linéaire")
             return
 
         if not self.dlg.isVisible():
@@ -167,19 +188,13 @@ class Altibonne:
         self.dlg.pushButtonUpDown.setEnabled(False)
         self.dlg.pushButtonChangeZpoint.setEnabled(False)
 
-        self.layer = self.iface.activeLayer()
-        if self.layer.selectedFeatureCount() == 0:
-            self.dlg.lineEdit_valZ.setText("0")
-            self.dlg.lineEditZpoint.setText("0")
-            self.dlg.lineEditZInterpole.setText("0")
-            self.dlg.label_warning.setText("")
-            return
+        self.dlg.lineEdit_valZ.setText("0")
+        self.dlg.lineEditZpoint.setText("0")
+        self.dlg.lineEditZInterpole.setText("0")
+        self.dlg.label_warning.setText("")
 
-        elif self.layer.selectedFeatureCount() == 1:
-            self.dlg.pushButtonUpDown.setEnabled(True)
-
-        elif self.layer.selectedFeatureCount() == 2:
-            self.dlg.pushButtonUpDown.setEnabled(True)
+        if self.layer.selectedFeatureCount() == 2:
+            # self.dlg.pushButtonUpDown.setEnabled(True)
             selection = self.layer.selectedFeatures()
             sel1 = selection[0]
             sel2 = selection[1]
@@ -195,8 +210,10 @@ class Altibonne:
         self.list_coord = self.get_coord_selection()
         if self.list_coord is None:
             return
+        # on réinitialise le texte avant de redessiner un profil
+        self.texte_scene = None
         self.dessine_profil(self.list_coord)
-        # -> forcer le redimensionnement pour mettre a jour la scene
+        # → forcer le redimensionnement pour mettre à jour la scene
         self.dlg.resize(self.dlg.width()+1 , self.dlg.height()+1 )
         self.dlg.resize(self.dlg.width()-1 , self.dlg.height()-1 )
 
@@ -209,36 +226,89 @@ class Altibonne:
         if self.point_clique is None:
             return
 
-        # Reprojeter point cliqué dans CRS de la couche
-        # car il est defini dans la class "CercleClickable" avec la projection du canvas !
-        crs_canvas = self.iface.mapCanvas().mapSettings().destinationCrs()
-        crs_layer = self.layer.crs()
-        transform = QgsCoordinateTransform(crs_canvas, crs_layer, QgsProject.instance())
-        pt_clique_layer = transform.transform(self.point_clique)
+        geom_type = self.layer.wkbType()
+        geom_type_str = QgsWkbTypes.displayString(geom_type)
+        if geom_type_str == "LineStringZ" or geom_type_str == "MultiLineString":
+            # Reprojeter point cliqué dans CRS de la couche,
+            # car il est défini dans la class "CercleClickable" avec la projection du canvas !
+            crs_canvas = self.iface.mapCanvas().mapSettings().destinationCrs()
+            crs_layer = self.layer.crs()
+            transform = QgsCoordinateTransform(crs_canvas, crs_layer, QgsProject.instance())
+            pt_clique_layer = transform.transform(self.point_clique)
 
-        self.layer.startEditing()
-        # Parcourir les features sélectionnées
-        for feat in self.layer.selectedFeatures():
-            geom = feat.geometry()
-            points = [QgsPoint(pt.x(), pt.y(), pt.z() if hasattr(pt, 'z') else 0)
-                      for pt in geom.vertices()]
+            self.layer.startEditing()
+            # Parcourir les features sélectionnées
+            for feat in self.layer.selectedFeatures():
+                geom = feat.geometry()
+                points = [QgsPoint(pt.x(), pt.y(), pt.z() if hasattr(pt, 'z') else 0)
+                          for pt in geom.vertices()]
 
-            # Chercher le point correspondant à point_xy
-            for i, pt in enumerate(points):
-                if abs(pt.x() - pt_clique_layer.x()) < 1e-5 and abs(pt.y() - pt_clique_layer.y()) < 1e-5:
-                    points[i] = QgsPoint(pt.x(), pt.y(), float(self.dlg.lineEditZInterpole.text()))  # Modifier seulement le Z
-                    break
+                # Chercher le point correspondant à point_xy
+                for i, pt in enumerate(points):
+                    if abs(pt.x() - pt_clique_layer.x()) < 1e-5 and abs(pt.y() - pt_clique_layer.y()) < 1e-5:
+                        points[i] = QgsPoint(pt.x(), pt.y(), float(self.dlg.lineEditZInterpole.text()))  # Modifier seulement le Z
+                        break
 
-            # Recréer la géométrie et appliquer
-            nouvelle_geom = QgsGeometry.fromPolyline(points)
-            self.layer.changeGeometry(feat.id(), nouvelle_geom)
+                # Recréer la géométrie et appliquer
+                nouvelle_geom = QgsGeometry.fromPolyline(points)
+                self.layer.changeGeometry(feat.id(), nouvelle_geom)
 
-        # Rafraîchir la vue
-        self.actualiserSelection()
-        # self.layer.triggerRepaint()
+            # Rafraîchir la vue
+            self.actualiserSelection()
+        else:
+            QMessageBox.warning(None, "Avertissement", "la sélection doit être un linéaire !")
+
+    # test sur la saisie des linedit
+    # lineedit  : linedit à tester
+    # pushbutton : bouton associé pour gérer le setEnabled
+    def is_saisie_valide(self,linedit,pushbutton):
+        texte = linedit.text()
+        if texte == "" or texte == "0":
+            pushbutton.setEnabled(False)
+        else:
+            pushbutton.setEnabled(True)
+
+        # cas particulier :
+        # si aucun point n'est sélectionné → on masque le bouton de changement de z d'un point
+        if not self.point_clique:
+            self.dlg.pushButtonChangeZpoint.setEnabled(False)
+
+    def is_layer_valide(self):
+        # si layer sans z
+        if not QgsWkbTypes.hasZ(self.layer.wkbType()):
+            return False
+        return True
+
+    def is_type_geom_valide(self):
+        # si autres chose que lineaire
+        if (QgsWkbTypes.displayString(self.layer.wkbType()) != "LineStringZ"
+                and QgsWkbTypes.displayString(self.layer.wkbType()) != "MultiLineStringZ"):
+            return False
+        return True
+
+    def ecrire_dans_scene(self,texte):
+        self.texte_scene = texte
+        self.scene.clear()
+
+        # force la scène à la taille visible actuelle
+        self.scene.setSceneRect(0, 0, self.view.viewport().width(), self.view.viewport().height())
+
+        txt = QGraphicsTextItem(texte)
+        font = QFont("Arial", 15)
+        font.setBold(True)
+        txt.setFont(font)
+        txt.setDefaultTextColor(QColor("red"))
+        # taille du texte
+        rect = txt.boundingRect()
+        scene_rect = self.scene.sceneRect()
+        x = scene_rect.center().x() - rect.width() / 2
+        y = scene_rect.center().y() - rect.height() / 2
+        txt.setPos(x, y)
+        self.scene.addItem(txt)
 
     def changeZentite(self):
-        if self.dlg.lineEdit_valZ.text() == "0":
+        if self.dlg.lineEdit_valZ.text() == "0" or self.dlg.lineEdit_valZ.text() == "":
+            self.dlg.lineEdit_valZ.setText("0")
             return
         geom_type = self.layer.wkbType()
         geom_type_str = QgsWkbTypes.displayString(geom_type)
@@ -402,13 +472,15 @@ class Altibonne:
         # la couleur est en fonction de la pente
         self.dessine_segment(d,self.list_z, self.list_x, self.list_y,distances_cumulees,distance_totale)
 
-        # indices de fin de ligne pour cercles rouges
-        indice_fin_ligne = []
-        count = 0
-        for ligne in self.layer.selectedFeatures():
-            nb_points = len(list(ligne.geometry().vertices()))
-            count += nb_points
-            indice_fin_ligne.append(count)
+
+        # indices des points à afficher en rouge
+        selection = self.layer.selectedFeatures()
+        points_rouges = {0, len(self.list_z) - 1}
+
+        if len(selection) == 2:
+            nb_points_l1 = len(list(selection[0].geometry().vertices()))
+            points_rouges.add(nb_points_l1 - 1)  # dernier point tronçon 1
+            points_rouges.add(nb_points_l1)  # premier point tronçon 2
 
         # ==============
         # DESSIN des cercles et altitudes sur les sommets
@@ -422,7 +494,7 @@ class Altibonne:
             # définir le point cliqué pour ensuite le visualiser dans qgis
             qgs_point = QgsPointXY(self.list_x[i], self.list_y[i])
             # CERCLES ROUGE
-            if i in [0, indice_fin_ligne[0] - 1]:
+            if i in points_rouges:
                 cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE / 2, -TAILLE_CERCLE_EXTREMITE / 2,
                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,qgs_point,self)
                 cercle.setBrush(QColor(255, 0, 0))
@@ -450,12 +522,10 @@ class Altibonne:
                 altitude_text.setFont(font)
                 altitude_text.setPos(pos_x - 15, pos_z)
                 altitude_text.setZValue(0)
+                # le texte garde une taille fixe à l'écran malgré le zoom
+                altitude_text.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 self.scene.addItem(altitude_text)
         self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
-
-
-    def initGui(self):
-        pass
 
     def unload(self):
         pass
@@ -466,7 +536,7 @@ class Altibonne:
 
         # Créer une vue pour afficher la scène
         self.view = QGraphicsView(self.scene,self.dlg)
-        # deplacement dans la vue
+        # déplacement dans la vue
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
         self.view.setStyleSheet("QGraphicsView { border: 3px solid black; }")
         self.view.setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)
@@ -481,18 +551,15 @@ class Altibonne:
         # self.dlg.gridLayout.addWidget(self.view)
         self.dlg.gridLayout.addWidget(self.view, 2, 0, 1, self.dlg.gridLayout.columnCount())
 
-
+    # on redessine à chaque redimensionnement de la scene
     def on_resize(self, event):
-        # self.actualiserSelection()
-        # Mettre à jour la ligne et la scène
-        if self.layer.selectedFeatureCount() == 0:
-            return
-        self.scene.setSceneRect(0, 0, self.view.width(), self.view.height())
-        if not self.list_coord:  # None ou dictionnaire vide
+        self.scene.setSceneRect(0, 0, self.view.viewport().width(), self.view.viewport().height())
+        if self.list_coord:
+            self.dessine_profil(self.list_coord)
+        elif self.texte_scene:
+            self.ecrire_dans_scene(self.texte_scene)
+
             event.accept()
-            return
-        self.dessine_profil(self.list_coord)
-        event.accept()
 
     def mousemoveevent(self,event):
         if self.last_mouse_pos:
@@ -533,6 +600,67 @@ class Altibonne:
         dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec()
 
+    def sauve_position_dial(self):
+        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope,
+                             "IGN", TITRE)
+        settings.setValue("position", self.dlg.pos())
+        settings.setValue("taille", self.dlg.size())
+        settings.setValue("visible", self.dlg.isVisible())
+
+    def restore_position_dial(self):
+        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope, "IGN", TITRE)
+        pos = settings.value("position", type=QPoint)
+        size = settings.value("taille", type=QSize)
+        if pos is None:
+            return
+        screens = QApplication.screens()
+        multi = len(screens) > 1
+        # Vérifie si la position est sur un des écrans
+        on_screen = any(screen.geometry().contains(pos) for screen in screens)
+        if on_screen:
+            self.dlg.move(pos)
+            if size:
+                self.dlg.resize(size)
+        else:
+            # Si un seul écran → replacer en haut-gauche
+            if not multi:
+                self.dlg.move(QPoint(0, 0))
+            else:
+                # Multi-écran mais position invalide → centrer sur écran principal
+                primary = QApplication.primaryScreen().geometry()
+                center = primary.center()
+                self.dlg.move(center - self.dlg.rect().center())
+
+    def fermeture_qgis(self):
+        self.sauve_position_dial()
+
+    def on_project_opened(self):
+        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope, "IGN", TITRE)
+        visible = settings.value("visible", False, type=bool)
+
+        if visible:
+            self.run()
+
+    def initGui(self):
+        self.iface.projectRead.connect(self.on_project_opened)
+
+    def on_dialog_closed(self):
+        self.sauve_position_dial()
+        # déconnexion des signaux
+        try:
+            self.iface.mapCanvas().selectionChanged.disconnect(self.actualiserSelection)
+        except TypeError:
+            pass
+        try:
+            self.iface.currentLayerChanged.disconnect(self.actualiserSelection)
+        except TypeError:
+            pass
+        # suppression des marqueurs
+        for m in self.liste_markers:
+            self.iface.mapCanvas().scene().removeItem(m)
+        self.liste_markers.clear()
+        self.dlg = None
+
     def run(self):
         if not is_projet_load():
             return
@@ -540,13 +668,26 @@ class Altibonne:
         self.dlg = AltibonneDialog()
         self.dlg.setWindowTitle(f"{TITRE}")
 
+        # connection de la fermeture du dialogue
+        self.dlg.finished.connect(self.on_dialog_closed)
+
+        self.restore_position_dial()
+
         self.layer = self.iface.activeLayer()
 
-        if not QgsWkbTypes.hasZ(self.layer.wkbType()):
-            QMessageBox.warning(self.dlg, "Avertissement", "Ce layer n'a pas de Z")
+        # si le layer est valide (couche en 3d)
+        if not self.is_layer_valide():
+            QMessageBox.warning(self.dlg, "Avertissement", f"La couche <span style = 'color:red'><b>{self.layer.name()}"
+                                                           f" ({QgsWkbTypes.displayString(self.layer.wkbType())})</b></span> n'a pas de Z")
             return
 
-        # le plugin espace co ne remet pas le curseur par defaut
+        # si autre chose que linéaire
+        if (QgsWkbTypes.displayString(self.layer.wkbType()) != "LineStringZ"
+                and QgsWkbTypes.displayString(self.layer.wkbType()) != "MultiLineStringZ"):
+            QMessageBox.warning(self.dlg, "Avertissement", f"La couche doit être de type linéaire")
+            return
+
+        # le plugin espace co ne remet pas le curseur par défaut
         # donc je le fais ici.
         while QApplication.overrideCursor() is not None:
             QApplication.restoreOverrideCursor()
@@ -555,8 +696,10 @@ class Altibonne:
         self.dlg.label_warning.setText("")
 
         self.creerscene()
+        # événement actualisation selection
         self.iface.mapCanvas().selectionChanged.connect(self.actualiserSelection)
-
+        # événement fermeture de qgis
+        QgsApplication.instance().aboutToQuit.connect(self.fermeture_qgis)
 
         # delta z
         # nombre compris entre -100 et 100 avec 1 décimale
@@ -576,19 +719,25 @@ class Altibonne:
         regex = QRegularExpression(r"^(?:[1-9](?:\.\d)?|[1-8]\d(?:\.\d)?|90(?:\.0)?)$")
         validator = QRegularExpressionValidator(regex, self.dlg)
         self.dlg.lineEdit_seuil_pente.setValidator(validator)
-        self.dlg.lineEdit_seuil_pente.setText("2")
+        self.dlg.lineEdit_seuil_pente.setText("15")
         self.seuil_pente = int(self.dlg.lineEdit_seuil_pente.text())
 
         # a propos...
         self.dlg.pushButtonApropos.clicked.connect(self.apropos)
 
-        # evenement bouton
+        # événement bouton
         self.dlg.pushButton_actualiser.clicked.connect(self.actualiser_seuil)
         self.dlg.pushButton_actualiser.setStyleSheet(CUSTOM_WIDGETS[1])
         self.dlg.pushButtonUpDown.clicked.connect(self.changeZentite)
         self.dlg.pushButtonUpDown.setStyleSheet(CUSTOM_WIDGETS[0])
         self.dlg.pushButtonChangeZpoint.clicked.connect(self.changeZpoint)
         self.dlg.pushButtonChangeZpoint.setStyleSheet(CUSTOM_WIDGETS[0])
+
+        self.iface.currentLayerChanged.connect(self.actualiserSelection)
+
+        # événement du lineedit
+        self.dlg.lineEdit_valZ.textEdited.connect(lambda :self.is_saisie_valide(self.dlg.lineEdit_valZ,self.dlg.pushButtonUpDown))
+        self.dlg.lineEditZInterpole.textEdited.connect(lambda: self.is_saisie_valide(self.dlg.lineEditZInterpole,self.dlg.pushButtonChangeZpoint))
 
         # signal des checkbox
         self.dlg.checkBox_z.stateChanged.connect(self.actualiserSelection)
@@ -604,9 +753,7 @@ class Altibonne:
         self.dlg.setStyleSheet(CUSTOM_WIDGETS[3])
         self.view.setStyleSheet(CUSTOM_WIDGETS[4])
 
-
         self.dlg.resizeEvent = self.on_resize
-        # self.dlg.mousePressEvent = self.mousepressevent
         self.dlg.mouseMoveEvent = self.mousemoveevent
         self.dlg.mouseReleaseEvent = self.mousereleaseevent
         self.dlg.wheelEvent = self.molette
@@ -619,10 +766,16 @@ class Altibonne:
         self.actualiserSelection()
 
         # Run the dialog event loop
-        result = self.dlg.exec()
-        if result == QDialog.Rejected:
-            # suppression de tous les marqueurs (pointer le point cliqué) lorsque on quitte
-            for m in self.liste_markers:
-                self.iface.mapCanvas().scene().removeItem(m)
-            self.liste_markers.clear()
+        # result = self.dlg.exec()
+        # if result == QDialog.Rejected:
+        #     self.sauve_position_dial()
+        #     # on déconnecte le signal en quittant
+        #     try:
+        #         self.iface.mapCanvas().selectionChanged.disconnect(self.actualiserSelection)
+        #     except TypeError:
+        #         pass  # aucune connexion existante
+        #     # suppression de tous les marqueurs (pointer le point cliqué) lorsqu'on quitte
+        #     for m in self.liste_markers:
+        #         self.iface.mapCanvas().scene().removeItem(m)
+        #     self.liste_markers.clear()
 
