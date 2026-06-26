@@ -41,7 +41,8 @@ from .mapping_version import *
 def fusion_points(l1, l2):
     return l1 + l2
 
-def orienter_lignes(layer,sommets_l1, sommets_l2):
+# fonction pour orienter 2 lignes
+def orienter_deux_lignes(layer, sommets_l1, sommets_l2):
     p1_start, p1_end = sommets_l1[0], sommets_l1[-1]
     p2_start, p2_end = sommets_l2[0], sommets_l2[-1]
 
@@ -58,9 +59,90 @@ def orienter_lignes(layer,sommets_l1, sommets_l2):
     elif points_egau_xy(layer,p1_start, p2_start, TOLERANCE_PT_CONFONDU):
         # L1 inversée
         return list(reversed(sommets_l1)), sommets_l2
-
     # Pas de point commun sur les extrémités
     return None, None
+
+# fonction pour faire un chainage de plus de 2 lignes
+# IMPORTANT : self.layer.selectedFeatures() ne conserve pas l'ordre de sélection
+# donc avant de faire le chainage, il faut determiner une extrémité
+#  et une ligne qui un pt (debut ou fin) qui est commun avec aucunes autre ligne
+def chainer_lignes(layer,features):
+    # list_all_sommets : une liste de listes de sommets
+    list_all_sommets = [list(f.geometry().vertices()) for f in features]
+
+    # savoir quelle liste correspondant à une extremité
+    indice = trouve_extremite(layer,list_all_sommets)
+    # -1 --> un carrefour a été detecté
+    if indice == -1:
+        return -1
+
+    if indice is None:
+        return None
+    else:
+        # recuperation de la premiere ligne et suppression dans la liste totale
+        ligne_enchaine = [list_all_sommets.pop(indice)]
+
+    while list_all_sommets:
+        trouve = False
+        for i, sommets in enumerate(list_all_sommets):
+            l1, l2 = orienter_deux_lignes(layer, ligne_enchaine[-1], sommets)
+            if l1 is not None and l2 is not None:
+                # IMPORTANT : on remplace la dernière ligne par sa version orientée
+                ligne_enchaine[-1] = l1
+                ligne_enchaine.append(l2)
+                list_all_sommets.pop(i)
+                trouve = True
+                break
+        if not trouve:
+            return None
+    return ligne_enchaine
+
+def trouve_extremite(layer,list_all_sommets):
+    # connexion est une liste qui contient, pour chaque tronçon sélectionné,
+    # le nombre d'autres tronçons auxquels il est relié par une de ses extrémités.
+    extremites = []
+    for ligne in list_all_sommets:
+        for pt in (ligne[0], ligne[-1]):
+            trouve = False
+            for i, (p, nb) in enumerate(extremites):
+                if points_egau_xy(layer, pt, p, TOLERANCE_PT_CONFONDU):
+                    extremites[i] = (p, nb + 1)
+                    trouve = True
+                    break
+            if not trouve:
+                extremites.append((pt, 1))
+
+    # Une extrémité = une seule connexion
+    # Retourner l'indice de la liste dont un point n'est pas en commun avec points des autres lignes.
+    # On s'arrête a la premiere liste qui correspond
+    # donc ça peut etre une des 2 extrémités
+
+    # recherche dans connexions si j'ai des valeurs egal ou supérieur à 3
+    # → au moins 3 tronçons partagent le meme points (carrefour)
+    # on ne gère pas le profil pour ces cas.
+    for pt,nb in extremites:
+        if nb >= 3:
+            return -1
+
+
+    # dès qu'on trouve une connexion = 1
+    # → on a trouvé une extrémité doc, on quitte, peu importe si c'est le premier tronçon ou le dernier
+    for pt,nb in extremites:
+        if nb == 1:
+            for i, ligne in enumerate(list_all_sommets):
+                if (points_egau_xy(layer, pt, ligne[0], TOLERANCE_PT_CONFONDU) or
+                        points_egau_xy(layer, pt, ligne[-1], TOLERANCE_PT_CONFONDU)):
+                    return i
+    return None
+
+
+# TEST
+def affiche_only_z(list_point):
+    alt = []
+    for point in list_point:
+        alt.append(point.z())
+    print(alt)
+
 
 # le z peut être different pour que 2 tronçons soient contigües
 def points_egau_xy(layer,p1, p2, tol_metre):
@@ -85,6 +167,7 @@ class Altibonne:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
+        self.ligne_enchaine = None
         self.list_x = None
         self.list_y = None
         self.list_z = None
@@ -105,49 +188,55 @@ class Altibonne:
         self.first_start = True
 
 
+    # retourne les coordonnées de toute la sélection
     def get_coord_selection(self):
         self.dico_coord = {"x": [], "y": [], "z": []}
         features = self.layer.selectedFeatures()
 
+        # Pas de sélection
         if len(features) == 0:
             return None
 
-        if len(features) == 1:
-            geom = features[0].geometry()
-            for p in geom.vertices():
-                self.dico_coord["x"].append(p.x())
-                self.dico_coord["y"].append(p.y())
-                self.dico_coord["z"].append(p.z())
-            return self.dico_coord
+        # 1 de sélection
+        elif len(features) == 1:
+            self.ligne_enchaine = [list(features[0].geometry().vertices())]
 
-        if len(features) == 2:
+        # 2 de sélections
+        elif len(features) == 2:
+            # récuperation de tous les sommets d'une geometrie
             sommets_l1 = list(features[0].geometry().vertices())
             sommets_l2 = list(features[1].geometry().vertices())
+            self.ligne_enchaine = [sommets_l1, sommets_l2]
 
-            l1, l2 = orienter_lignes(self.layer,sommets_l1, sommets_l2)
-            if l1 is None or l2 is None:
-                self.dlg.label_warning.setText(
-                    f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
+        # Plus de 2 sélections
+        elif len(features) >2:
+            self.ligne_enchaine = chainer_lignes(self.layer,features)
+            if self.ligne_enchaine == -1:
+                self.ecrire_dans_scene("Un carrefour a été détecté.")
+                return None
 
-                # renvoie un dictionnaire vide
-                return {"x": [], "y": [], "z": []}
+            if self.ligne_enchaine is None:
+                self.ecrire_dans_scene("Les tronçons ne sont pas contiguës.")
+                return None
 
-            points = fusion_points(l1, l2)
-
-            for p in points:
+        self.dico_coord = {"x": [], "y": [], "z": []}
+        for ligne in self.ligne_enchaine:
+            for p in ligne:
                 self.dico_coord["x"].append(p.x())
                 self.dico_coord["y"].append(p.y())
                 self.dico_coord["z"].append(p.z())
 
-            return self.dico_coord
-        return None
+        return self.dico_coord
 
     def getZminmax_allselection(self):
         if self.dico_coord ["z"] == "":
             return None
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
-    def actualiserSelection(self):
+    def actualiserSelection(self,reset_zoom = False):
+        print("zoom (actualiser) = ", reset_zoom)
+        if reset_zoom:
+            self.view.resetTransform()
         self.layer = self.iface.activeLayer()
 
         # Il faut réinitialiser avant tout
@@ -199,19 +288,16 @@ class Altibonne:
             sel1 = selection[0]
             sel2 = selection[1]
             if not sel1.geometry().touches(sel2.geometry()):
-                self.dlg.label_warning.setText(f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
+                self.ecrire_dans_scene("Les tronçons ne sont pas contiguës")
+                # self.dlg.label_warning.setText(f"<span style = 'color:red'><b>Les tronçons ne sont pas contiguës</b></span>")
                 return
-
-        elif self.layer.selectedFeatureCount() > 2:
-            self.dlg.label_warning.setText(
-                f"<span style = 'color:red'><b>Sélection : 2 tronçons maximum</b></span>")
-            return
 
         self.list_coord = self.get_coord_selection()
         if self.list_coord is None:
             return
         # on réinitialise le texte avant de redessiner un profil
         self.texte_scene = None
+        # on reinitialise le zoom
         self.dessine_profil(self.list_coord)
         # → forcer le redimensionnement pour mettre à jour la scene
         self.dlg.resize(self.dlg.width()+1 , self.dlg.height()+1 )
@@ -228,7 +314,7 @@ class Altibonne:
 
         geom_type = self.layer.wkbType()
         geom_type_str = QgsWkbTypes.displayString(geom_type)
-        if geom_type_str == "LineStringZ" or geom_type_str == "MultiLineString":
+        if geom_type_str == "LineStringZ" or geom_type_str == "MultiLineStringZ":
             # Reprojeter point cliqué dans CRS de la couche,
             # car il est défini dans la class "CercleClickable" avec la projection du canvas !
             crs_canvas = self.iface.mapCanvas().mapSettings().destinationCrs()
@@ -254,7 +340,7 @@ class Altibonne:
                 self.layer.changeGeometry(feat.id(), nouvelle_geom)
 
             # Rafraîchir la vue
-            self.actualiserSelection()
+            self.actualiserSelection(False)
         else:
             QMessageBox.warning(None, "Avertissement", "la sélection doit être un linéaire !")
 
@@ -439,7 +525,6 @@ class Altibonne:
 
     def dessine_profil(self, list_coord):
         # self.view.resetTransform()
-        self.view.resetTransform()
         self.scene.clear()
 
         plage_disponible = self.scene.height() - MARGE_BAS - MARGE_HAUT
@@ -473,14 +558,12 @@ class Altibonne:
         self.dessine_segment(d,self.list_z, self.list_x, self.list_y,distances_cumulees,distance_totale)
 
 
-        # indices des points à afficher en rouge
-        selection = self.layer.selectedFeatures()
-        points_rouges = {0, len(self.list_z) - 1}
-
-        if len(selection) == 2:
-            nb_points_l1 = len(list(selection[0].geometry().vertices()))
-            points_rouges.add(nb_points_l1 - 1)  # dernier point tronçon 1
-            points_rouges.add(nb_points_l1)  # premier point tronçon 2
+        points_rouges = set()
+        indice = 0
+        for ligne in self.ligne_enchaine:
+            points_rouges.add(indice)  # premier point du tronçon
+            points_rouges.add(indice + len(ligne) - 1)  # dernier point du tronçon
+            indice += len(ligne)
 
         # ==============
         # DESSIN des cercles et altitudes sur les sommets
@@ -525,6 +608,8 @@ class Altibonne:
                 # le texte garde une taille fixe à l'écran malgré le zoom
                 altitude_text.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 self.scene.addItem(altitude_text)
+
+        # self.view.setTransform(transform)
         self.dlg.label_nb_points.setText(f"Nb de points = {len(self.list_z)}")
 
     def unload(self):
@@ -742,8 +827,8 @@ class Altibonne:
         self.dlg.lineEditZInterpole.textEdited.connect(lambda: self.is_saisie_valide(self.dlg.lineEditZInterpole,self.dlg.pushButtonChangeZpoint))
 
         # signal des checkbox
-        self.dlg.checkBox_z.stateChanged.connect(self.actualiserSelection)
-        self.dlg.checkBox_pente.stateChanged.connect(self.actualiserSelection)
+        self.dlg.checkBox_z.stateChanged.connect(lambda :self.actualiserSelection(False))
+        self.dlg.checkBox_pente.stateChanged.connect(lambda :self.actualiserSelection(False))
 
         # aspect des line edit
         self.dlg.lineEdit_valZ.setStyleSheet(CUSTOM_WIDGETS[2])
