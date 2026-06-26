@@ -42,7 +42,8 @@ alt="logo_IGN_pour_lettre" /></td>
 </div>
 
 Version de QGIS 3 : 3.28 ou supérieure.  
-Ce plugin fonctionne en parallèle du plugin « IGN Espace collaboratif » version 4.2.2 et IGN_Maitre  
+Le plugin « maitre » doit préalablement être installé : 
+[maitre-qgis-plugin sur GitHub](https://github.com/IGNF/maitre-qgis-plugin)  
 
 
 
