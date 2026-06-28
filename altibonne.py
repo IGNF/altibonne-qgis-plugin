@@ -234,7 +234,6 @@ class Altibonne:
         return min(self.dico_coord["z"]),max(self.dico_coord["z"])
 
     def actualiserSelection(self,reset_zoom = False):
-        print("zoom (actualiser) = ", reset_zoom)
         if reset_zoom:
             self.view.resetTransform()
         self.layer = self.iface.activeLayer()
@@ -749,7 +748,7 @@ class Altibonne:
         self.dlg = None
 
     def run(self):
-        if self.dlg is not None:
+        if self.dlg is not None and self.dlg.isVisible():
             return
         if not is_projet_load():
             return
