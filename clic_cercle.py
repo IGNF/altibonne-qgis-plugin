@@ -9,7 +9,7 @@ from .mapping_version import *
 class CercleClickable(QGraphicsEllipseItem):
     def __init__(self, x, y, w, h,indice = None,entite_id = None,parent = None):
         super().__init__(x, y, w, h)
-        self.setFlags(QGraphicsEllipseItem.ItemIsSelectable)
+        self.setFlags(ItemIsSelectable)
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(LeftButton)  # accepter clic gauche
         self.indice = indice

@@ -580,7 +580,7 @@ class Altibonne:
                 cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE / 2, -TAILLE_CERCLE_EXTREMITE / 2,
                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,qgs_point,self)
                 cercle.setBrush(QColor(255, 0, 0))
-                cercle.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+                cercle.setFlag(ItemIgnoresTransformations, True)
                 # force le cercle rouge à passer au-dessus des cercles verts
                 cercle.setZValue(2)
 
@@ -591,7 +591,7 @@ class Altibonne:
 
                 cercle.setBrush(QColor(0, 255, 0))
                 # garde la taille des cercles fixes, Quel que soit le zoom
-                cercle.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+                cercle.setFlag(ItemIgnoresTransformations, True)
                 cercle.setZValue(1)
 
             cercle.setPos(pos_x, pos_z)
@@ -605,7 +605,7 @@ class Altibonne:
                 altitude_text.setPos(pos_x - 15, pos_z)
                 altitude_text.setZValue(0)
                 # le texte garde une taille fixe à l'écran malgré le zoom
-                altitude_text.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+                altitude_text.setFlag(ItemIgnoresTransformations, True)
                 self.scene.addItem(altitude_text)
 
         # self.view.setTransform(transform)
@@ -621,7 +621,7 @@ class Altibonne:
         # Créer une vue pour afficher la scène
         self.view = QGraphicsView(self.scene,self.dlg)
         # déplacement dans la vue
-        self.view.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.view.setDragMode(ScrollHandDrag)
         self.view.setStyleSheet("QGraphicsView { border: 3px solid black; }")
         self.view.setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(ScrollBarAlwaysOff)
@@ -685,17 +685,16 @@ class Altibonne:
         dlgAProposDe.exec()
 
     def sauve_position_dial(self):
-        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope,
-                             "IGN", TITRE)
+        settings = QSettings(NativeFormat, UserScope,"IGN", TITRE)
         settings.setValue("position", self.dlg.pos())
         settings.setValue("taille", self.dlg.size())
         settings.setValue("visible", self.dlg.isVisible())
 
     def restore_position_dial(self):
-        settings = QSettings(QSettings.NativeFormat, QSettings.UserScope, "IGN", TITRE)
+        settings = QSettings(NativeFormat, UserScope, "IGN", TITRE)
         pos = settings.value("position", type=QPoint)
         size = settings.value("taille", type=QSize)
-        if pos is None:
+        if not pos:
             return
         screens = QApplication.screens()
         multi = len(screens) > 1

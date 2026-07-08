@@ -1,5 +1,5 @@
-from qgis.PyQt.QtWidgets import QMessageBox,QTextEdit,QSizePolicy,QDialog
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QMessageBox,QTextEdit,QSizePolicy,QDialog,QGraphicsView,QGraphicsItem
+from qgis.PyQt.QtCore import Qt,QSettings
 
 # QT6
 try :
@@ -9,6 +9,9 @@ try :
     WindowCloseButtonHint = Qt.WindowType.WindowCloseButtonHint
     WindowTitleHint = Qt.WindowType.WindowTitleHint
     WindowStaysOnTopHint = Qt.WindowType.WindowStaysOnTopHint
+    ScrollHandDrag = QGraphicsView.DragMode.ScrollHandDrag
+    ItemIsSelectable = QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+    ItemIgnoresTransformations = QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
     # Checked = Qt.CheckState.Checked
     # Unchecked = Qt.CheckState.Unchecked
     # ItemIsEnabled = Qt.ItemFlag.ItemIsEnabled
@@ -16,6 +19,8 @@ try :
     # MatchExactly = Qt.MatchFlag.MatchExactly
     # RightSide = QTabBar.ButtonPosition.RightSide
     # LeftSide = QTabBar.ButtonPosition.LeftSide
+    NativeFormat = QSettings.Format.NativeFormat
+    UserScope = QSettings.Scope.UserScope
     Warning = QMessageBox.Icon.Warning
     YesRole = QMessageBox.ButtonRole.YesRole
     AcceptRole = QMessageBox.ButtonRole.AcceptRole
@@ -47,6 +52,9 @@ except :
     WindowCloseButtonHint = Qt.WindowCloseButtonHint
     WindowTitleHint = Qt.WindowTitleHint
     WindowStaysOnTopHint = Qt.WindowStaysOnTopHint
+    ScrollHandDrag = QGraphicsView.ScrollHandDrag
+    ItemIsSelectable = QGraphicsItem.ItemIsSelectable
+    ItemIgnoresTransformations = QGraphicsItem.ItemIgnoresTransformations
     # Checked = Qt.Checked
     # Unchecked = Qt.Unchecked
     # ItemIsEnabled = Qt.ItemIsEnabled
@@ -54,6 +62,8 @@ except :
     # MatchExactly = Qt.MatchFlag.MatchExactly
     # RightSide = QTabBar.RightSide
     # LeftSide = QTabBar.LeftSide
+    NativeFormat = QSettings.NativeFormat
+    UserScope = QSettings.UserScope
     Warning = QMessageBox.Warning
     YesRole = QMessageBox.YesRole
     AcceptRole = QMessageBox.AcceptRole
