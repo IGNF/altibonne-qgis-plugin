@@ -1,11 +1,11 @@
 # Altibonne
 
-Altibonne is a Python plugin that allows visualizing and correcting elevation profiles on linear features (max 2 contiguous) or surface features (max 1)
+Altibonne is a Python plugin that allows visualizing and correcting elevation profiles on linear features.
 
 ## Pré-requis
 
-Mandatory : The "plugin\_maitre" must be installed.
-Link to the plugin maître : [maitre-qgis-plugin sur GitHub](https://github.com/IGNF/maitre-qgis-plugin)
+Mandatory : The "PluginsManager" must be installed.  
+Link : [PluginsManager sur GitHub](https://github.com/IGNF/maitre-qgis-plugin/releases/download/version_finale/PluginsManager.zip)
 
 ## Fonctionnalités
 
