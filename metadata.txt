@@ -11,7 +11,7 @@ version=1.0.0
 author=Gérôme PECHEUR (IGN)
 email=gerome.pecheur@ign.fr
 
-about=Visualisation et modification d'un profil.
+about=Visualisation et modification d'un profil. IGN PluginsManager est nécessaire pour l'installation de ce plugin.
 
 homepage=https://ignf.github.io/altibonne-qgis-plugin/
 tracker=https://github.com/IGNF/altibonne-qgis-plugin/issues
