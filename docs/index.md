@@ -12,7 +12,7 @@
 style="width:1.38681in;height:1.47153in"
 alt="logo_IGN_pour_lettre" /></td>
 <td style="font-size: 24px;text-align: center;"><p><strong>Manuel utilisateur du plugin
-« Altibonne »</strong></p>
+« IGN Altibonne »</strong></p>
 </td>
 </tr>
 <tr>
@@ -41,9 +41,10 @@ alt="logo_IGN_pour_lettre" /></td>
   <h2 id="prerequis" style="color: white;margin:0;" >1. Prérequis</h2>
 </div>
 
-Version de QGIS 3 : 3.28 ou supérieure.  
-Le plugin « maitre » doit préalablement être installé : 
-[maitre-qgis-plugin sur GitHub](https://github.com/IGNF/maitre-qgis-plugin)  
+Version de QGIS 3 : 3.34 ou supérieure.  
+Compatible QGIS 4
+Le plugin «PluginsManager» doit préalablement être installé : 
+[PluginsManager sur GitHub](https://github.com/IGNF/maitre-qgis-plugin/releases/download/version_finale/PluginsManager.zip)  
 
 
 

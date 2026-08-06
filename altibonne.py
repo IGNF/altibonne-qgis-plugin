@@ -25,7 +25,7 @@ import os
 
 from qgis.PyQt.QtCore import  QRegularExpression, QSettings, QPoint, QSize
 from qgis.PyQt.QtGui import QPainterPath, QColor, QFont, QRegularExpressionValidator
-from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QGraphicsItem
+from qgis.PyQt.QtWidgets import QGraphicsPathItem, QGraphicsTextItem, QApplication, QDialog,QSizePolicy
 from qgis.PyQt.uic import loadUi
 
 from qgis.PyQt.QtWidgets import QGraphicsScene, QGraphicsView,QGraphicsRectItem
@@ -36,7 +36,7 @@ from .altibonne_dialog import AltibonneDialog
 from .fonction import *
 from .constante import *
 from .clic_cercle import *
-from .mapping_version import *
+# from .mapping_version import *
 
 def fusion_points(l1, l2):
     return l1 + l2
@@ -114,10 +114,10 @@ def trouve_extremite(layer,list_all_sommets):
 
     # Une extrémité = une seule connexion
     # Retourner l'indice de la liste dont un point n'est pas en commun avec points des autres lignes.
-    # On s'arrête a la premiere liste qui correspond
+    # On s'arrête à la premiere liste qui correspond
     # donc ça peut etre une des 2 extrémités
 
-    # recherche dans connexions si j'ai des valeurs egal ou supérieur à 3
+    # recherche dans les connexions si j'ai des valeurs egal ou supérieur à 3
     # → au moins 3 tronçons partagent le meme points (carrefour)
     # on ne gère pas le profil pour ces cas.
     for pt,nb in extremites:
@@ -135,15 +135,6 @@ def trouve_extremite(layer,list_all_sommets):
                     return i
     return None
 
-
-# TEST
-def affiche_only_z(list_point):
-    alt = []
-    for point in list_point:
-        alt.append(point.z())
-    print(alt)
-
-
 # le z peut être different pour que 2 tronçons soient contigües
 def points_egau_xy(layer,p1, p2, tol_metre):
     """Compare deux points en coordonnées réelles avec tolérance en mètres"""
@@ -160,7 +151,6 @@ def is_projet_load():
         QMessageBox.warning(None, "Avertissement", "Veuillez charger un projet")
         return False
     return True
-
 
 # ============================================
 class Altibonne:
@@ -186,7 +176,6 @@ class Altibonne:
         # liste des marqueurs pour "pointer" un point cliqué dans qgis
         self.liste_markers = []
         self.first_start = True
-
 
     # retourne les coordonnées de toute la sélection
     def get_coord_selection(self):
@@ -242,16 +231,12 @@ class Altibonne:
         self.point_clique = None
         self.list_coord = None
 
-
         if self.layer.selectedFeatureCount() == 0:
             self.ecrire_dans_scene("La sélection est vide")
             return
 
         # si layer sans z
         if not self.is_layer_valide():
-            # QMessageBox.warning(self.dlg, "Avertissement",
-            #                     f"La couche <span style = 'color:red'><b>{self.layer.name()}"
-            #                     f" ({QgsWkbTypes.displayString(self.layer.wkbType())})</b></span> n'a pas de Z")
             texte = f"La couche : {self.layer.name()} n'a pas de Z"
             self.ecrire_dans_scene(texte)
             return
@@ -301,7 +286,6 @@ class Altibonne:
         # → forcer le redimensionnement pour mettre à jour la scene
         self.dlg.resize(self.dlg.width()+1 , self.dlg.height()+1 )
         self.dlg.resize(self.dlg.width()-1 , self.dlg.height()-1 )
-
 
     def actualiser_seuil(self):
         self.seuil_pente = float(self.dlg.lineEdit_seuil_pente.text())
@@ -580,7 +564,7 @@ class Altibonne:
                 cercle = CercleClickable(-TAILLE_CERCLE_EXTREMITE / 2, -TAILLE_CERCLE_EXTREMITE / 2,
                                         TAILLE_CERCLE_EXTREMITE, TAILLE_CERCLE_EXTREMITE, i,qgs_point,self)
                 cercle.setBrush(QColor(255, 0, 0))
-                cercle.setFlag(ItemIgnoresTransformations, True)
+                cercle.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
                 # force le cercle rouge à passer au-dessus des cercles verts
                 cercle.setZValue(2)
 
@@ -591,7 +575,7 @@ class Altibonne:
 
                 cercle.setBrush(QColor(0, 255, 0))
                 # garde la taille des cercles fixes, Quel que soit le zoom
-                cercle.setFlag(ItemIgnoresTransformations, True)
+                cercle.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
                 cercle.setZValue(1)
 
             cercle.setPos(pos_x, pos_z)
@@ -605,7 +589,7 @@ class Altibonne:
                 altitude_text.setPos(pos_x - 15, pos_z)
                 altitude_text.setZValue(0)
                 # le texte garde une taille fixe à l'écran malgré le zoom
-                altitude_text.setFlag(ItemIgnoresTransformations, True)
+                altitude_text.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
                 self.scene.addItem(altitude_text)
 
         # self.view.setTransform(transform)
@@ -621,12 +605,12 @@ class Altibonne:
         # Créer une vue pour afficher la scène
         self.view = QGraphicsView(self.scene,self.dlg)
         # déplacement dans la vue
-        self.view.setDragMode(ScrollHandDrag)
+        self.view.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.view.setStyleSheet("QGraphicsView { border: 3px solid black; }")
-        self.view.setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)
-        self.view.setVerticalScrollBarPolicy(ScrollBarAlwaysOff)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         # self.dlg.setContentsMargins(0, 50, 0, 0)
-        self.view.setSizePolicy(Expanding,Expanding)
+        self.view.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
 
         # Ajouter sur la dernière ligne
         last_row = self.dlg.gridLayout.rowCount()
@@ -656,7 +640,7 @@ class Altibonne:
             event.accept()
 
     def mousereleaseevent(self,event):
-        if event.button() == MiddleButton:
+        if event.button() == Qt.MouseButton.MiddleButton:
             self.last_mouse_pos = None  # Réinitialiser la position de la souris
             event.accept()
 
@@ -679,19 +663,19 @@ class Altibonne:
     def apropos(self):
         dlgAProposDe = QDialog()
         loadUi(os.path.dirname(__file__) + "/aproposde.ui", dlgAProposDe)
-        dlgAProposDe.setWindowFlags(WindowStaysOnTopHint | WindowCloseButtonHint)
+        dlgAProposDe.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.WindowCloseButtonHint)
         dlgAProposDe.setWindowTitle(f"{TITRE}")
         dlgAProposDe.pushButtonAffichedoc.clicked.connect(afficheDoc)
         dlgAProposDe.exec()
 
     def sauve_position_dial(self):
-        settings = QSettings(NativeFormat, UserScope,"IGN", TITRE)
+        settings = QSettings(QSettings.Format.NativeFormat, QSettings.Scope.UserScope,"IGN", TITRE)
         settings.setValue("position", self.dlg.pos())
         settings.setValue("taille", self.dlg.size())
         settings.setValue("visible", self.dlg.isVisible())
 
     def restore_position_dial(self):
-        settings = QSettings(NativeFormat, UserScope, "IGN", TITRE)
+        settings = QSettings(QSettings.Format.NativeFormat, QSettings.Scope.UserScope, "IGN", TITRE)
         pos = settings.value("position", type=QPoint)
         size = settings.value("taille", type=QSize)
         if not pos:
@@ -718,7 +702,7 @@ class Altibonne:
         self.sauve_position_dial()
 
     def on_project_opened(self):
-        settings = QSettings(NativeFormat, UserScope, "IGN", TITRE)
+        settings = QSettings(QSettings.Format.NativeFormat, QSettings.Scope.UserScope, "IGN", TITRE)
         visible = settings.value("visible", False, type=bool)
 
         if visible:
@@ -844,7 +828,7 @@ class Altibonne:
         self.dlg.wheelEvent = self.molette
 
         self.dlg.setParent(self.iface.mainWindow())
-        self.dlg.setWindowFlags(Dialog | WindowTitleHint | WindowCloseButtonHint)
+        self.dlg.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowTitleHint | Qt.WindowType.WindowCloseButtonHint)
         # show the dialog
 
         self.dlg.show()
