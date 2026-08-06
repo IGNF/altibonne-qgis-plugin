@@ -36,7 +36,6 @@ from .altibonne_dialog import AltibonneDialog
 from .fonction import *
 from .constante import *
 from .clic_cercle import *
-# from .mapping_version import *
 
 def fusion_points(l1, l2):
     return l1 + l2
@@ -584,7 +583,7 @@ class Altibonne:
             # ALTITUDE sur les sommets
             if self.dlg.checkBox_z.isChecked():
                 altitude_text = QGraphicsTextItem(str(z_point))
-                font = QFont('Arial', TAILLE_TXT_ALT, QFont.Bold)
+                font = QFont('Arial', TAILLE_TXT_ALT, QFont.Weight.Bold)
                 altitude_text.setFont(font)
                 altitude_text.setPos(pos_x - 15, pos_z)
                 altitude_text.setZValue(0)
