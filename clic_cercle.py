@@ -32,7 +32,7 @@ class CercleClickable(QGraphicsEllipseItem):
         self.marker = QgsVertexMarker(self.parent.iface.mapCanvas())
         self.marker.setColor(Qt.GlobalColor.red)
         self.marker.setIconSize(10)
-        self.marker.setIconType(QgsVertexMarker.ICON_CIRCLE)
+        self.marker.setIconType(QgsVertexMarker.IconType.ICON_CIRCLE)
         self.marker.setPenWidth(2)
 
         # Déplacer le marker vers le point cliqué

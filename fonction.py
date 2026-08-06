@@ -13,7 +13,7 @@ def afficheerreur(text, titre="titre"):
     msg.setWindowTitle(titre)
     msg.setStandardButtons(QMessageBox.StandardButton.Ok)
     msg.setText(text)
-    msg.setWindowFlags(Qt.WindowStaysOnTopHint)
+    msg.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
     msg.exec()
 
 def affichemessageAvertissement(text, titre):
@@ -26,7 +26,7 @@ def affichemessageAvertissement(text, titre):
     btnAnnuler.setStyleSheet("color:red ; font-weight: bold")
     btnValider = msg.addButton("valider les modifications", QMessageBox.ButtonRole.AcceptRole)
     btnValider.setStyleSheet("color:green ; font-weight: bold")
-    msg.setWindowFlags(Qt.WindowStaysOnTopHint)
+    msg.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
     msg.exec()
 
     if msg.clickedButton() == btnAnnuler:
